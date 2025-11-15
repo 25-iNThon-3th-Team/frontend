@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import '../App.css'
 import { mockCourses } from '../data/mockData'
+import axiosInstance from '../api/axios'
+import useAuthStore from '../store/authStore'
 
 const LOCAL_STORAGE_KEY = 'inthon-saved-schedules'
 
@@ -156,6 +158,90 @@ const generateUniqueLabel = (baseLabel, existingSchedules) => {
   }
   
   return newLabel
+}
+
+// API 응답 데이터를 기존 구조로 변환하는 함수
+const convertApiTimetableToSchedule = (apiTimetable) => {
+  // 요일 변환 맵 (영문 -> 한글)
+  const dayMap = {
+    'MON': '월',
+    'TUE': '화',
+    'WED': '수',
+    'THU': '목',
+    'FRI': '금',
+    'SAT': '토',
+    'SUN': '일'
+  }
+
+  // creditType을 type으로 변환
+  const creditTypeMap = {
+    'MAJOR_REQUIRED': '전필',
+    'MAJOR_ELECTIVE': '전선',
+    'LIBERAL': '교양'
+  }
+
+  // classes를 courses로 변환
+  const courses = (apiTimetable.classes || []).map((classItem) => {
+    const { course, classCode, professorName, schedule: classSchedule } = classItem
+    
+    // schedule 배열을 slots로 변환
+    const slots = (classSchedule || []).map((sched) => {
+      const day = dayMap[sched.day] || sched.day
+      const start = parseTimeToMinutes(sched.start)
+      const end = parseTimeToMinutes(sched.end)
+      return {
+        day,
+        start,
+        end,
+        location: sched.location || ''
+      }
+    })
+
+    // schedule 텍스트 생성 (예: "화 15:00-16:15, 목 15:00-16:15")
+    const scheduleText = slots.map(slot => {
+      const startHour = Math.floor(slot.start / 60)
+      const startMin = slot.start % 60
+      const endHour = Math.floor(slot.end / 60)
+      const endMin = slot.end % 60
+      const startStr = `${String(startHour).padStart(2, '0')}:${String(startMin).padStart(2, '0')}`
+      const endStr = `${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`
+      return `${slot.day} ${startStr}-${endStr}`
+    }).join(', ')
+
+    return {
+      courseId: course.courseCode || '',
+      name: course.name || '',
+      professor: professorName || '',
+      schedule: scheduleText,
+      credits: course.credits || 0,
+      type: creditTypeMap[course.creditType] || '전선',
+      slots: slots,
+      classCode: classCode || '',
+      location: slots[0]?.location || '',
+      classId: classItem.id
+    }
+  })
+
+  // enriched courses
+  const enrichedCourses = courses.map((course) => enrichCourse(course))
+  const summary = summariseCourses(enrichedCourses)
+
+  return {
+    id: apiTimetable.id,
+    name: apiTimetable.name || `시간표 ${apiTimetable.id}`,
+    label: apiTimetable.name || `시간표 ${apiTimetable.id}`,
+    courses: enrichedCourses,
+    totalCredits: apiTimetable.totalCredits || summary.totalCredits,
+    requiredCount: summary.requiredCount,
+    electiveCount: summary.electiveCount,
+    signature: signatureFromCourses(enrichedCourses),
+    grade: apiTimetable.grade,
+    semester: apiTimetable.semester,
+    year: apiTimetable.year,
+    isActive: apiTimetable.isActive,
+    createdAt: apiTimetable.createdAt,
+    updatedAt: apiTimetable.updatedAt
+  }
 }
 
 const loadSavedSchedules = () => {
@@ -322,7 +408,7 @@ const buildBlocksForCourses = (courses = [], rangeStart) => {
     course.slots.forEach((slot) => {
       if (!DAY_LABELS.includes(slot.day)) return
       blocks.push({
-        key: `${course.courseId}-${slot.day}-${slot.start}`,
+        key: `${course.classId || course.courseId}-${slot.day}-${slot.start}`,
         courseId: course.courseId,
         day: slot.day,
         top: (slot.start - rangeStart) * MINUTES_PER_PIXEL,
@@ -373,7 +459,7 @@ const buildAiChatReply = (message = '', scheduleContext, savedCount = 0) => {
   return '요청 내용을 기록했어요. 원하는 요일이나 시간대를 구체적으로 말해주시면 그에 맞춰 추천 또는 편집 방법을 안내해 드릴게요.'
 }
 
-const TimetableGrid = ({ courses = [], editable = false, onSelectCourse, onBlockClick }) => {
+const TimetableGrid = ({ courses = [], editable = false, onSelectCourse, onBlockClick, clickedCourse, onDeleteCourse }) => {
   const gridRange = useMemo(() => computeGridRange(courses), [courses])
   const hourMarks = useMemo(() => buildHourMarks(gridRange), [gridRange])
   const blocks = useMemo(() => buildBlocksForCourses(courses, gridRange.start), [courses, gridRange])
@@ -412,17 +498,55 @@ const TimetableGrid = ({ courses = [], editable = false, onSelectCourse, onBlock
                     background: getCourseColor(block.courseId).bg,
                     borderColor: getCourseColor(block.courseId).border
                   }}
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation()
                     if (isInteractive) {
-                      onSelectCourse?.(block.courseId)
+                      // 편집 모드일 때는 클릭된 과목을 설정 (삭제 버튼 표시용)
+                      onBlockClick?.(block.course)
                     } else {
                       onBlockClick?.(block.course)
                     }
                   }}
                   >
+                    <div className="timetable-block-content">
                     <strong>{block.name}</strong>
                   <small>{block.location}</small>
                     <small>{block.professor || `${block.credits || 3}학점`}</small>
+                      {editable && clickedCourse && (
+                        ((clickedCourse.classId && block.course.classId && clickedCourse.classId === block.course.classId) ||
+                        (!clickedCourse.classId && !block.course.classId && clickedCourse.courseId === block.courseId))
+                      ) && (
+                        <div 
+                          style={{
+                            position: 'absolute',
+                            top: '4px',
+                            right: '4px',
+                            zIndex: 10
+                          }}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onDeleteCourse?.(block.courseId, block.course.classId)
+                          onBlockClick?.(null) // 삭제 후 클릭 상태 초기화
+                        }}
+                        >
+                          <button
+                            style={{
+                              background: 'rgba(239, 68, 68, 0.9)',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              padding: '4px 8px',
+                              fontSize: '0.7rem',
+                              fontWeight: '600',
+                              cursor: 'pointer',
+                              boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)'
+                            }}
+                          >
+                            삭제
+                          </button>
+                        </div>
+                      )}
+                    </div>
             </div>
           ))}
         </div>
@@ -435,14 +559,79 @@ const TimetableGrid = ({ courses = [], editable = false, onSelectCourse, onBlock
   )
 }
 
+// API 응답의 class 데이터를 기존 course 구조로 변환하는 함수
+const convertApiClassToCourse = (apiClass) => {
+  // 요일 변환 맵 (영문 -> 한글)
+  const dayMap = {
+    'MON': '월',
+    'TUE': '화',
+    'WED': '수',
+    'THU': '목',
+    'FRI': '금',
+    'SAT': '토',
+    'SUN': '일'
+  }
+
+  // creditType을 type으로 변환
+  const creditTypeMap = {
+    'MAJOR_REQUIRED': '전필',
+    'MAJOR_ELECTIVE': '전선',
+    'LIBERAL': '교양'
+  }
+
+  const { course, classCode, professorName, schedule: classSchedule } = apiClass
+  
+  // schedule 배열을 slots로 변환
+  const slots = (classSchedule || []).map((sched) => {
+    const day = dayMap[sched.day] || sched.day
+    const start = parseTimeToMinutes(sched.start)
+    const end = parseTimeToMinutes(sched.end)
+    return {
+      day,
+      start,
+      end,
+      location: sched.location || ''
+    }
+  })
+
+  // schedule 텍스트 생성 (예: "화 15:00-16:15, 목 15:00-16:15")
+  const scheduleText = slots.map(slot => {
+    const startHour = Math.floor(slot.start / 60)
+    const startMin = slot.start % 60
+    const endHour = Math.floor(slot.end / 60)
+    const endMin = slot.end % 60
+    const startStr = `${String(startHour).padStart(2, '0')}:${String(startMin).padStart(2, '0')}`
+    const endStr = `${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`
+    return `${slot.day} ${startStr}-${endStr}`
+  }).join(', ')
+
+  return {
+    courseId: course.courseCode || '',
+    name: course.name || '',
+    professor: professorName || '',
+    schedule: scheduleText,
+    credits: course.credits || 0,
+    type: creditTypeMap[course.creditType] || '전선',
+    slots: slots,
+    classCode: classCode || '',
+    location: slots[0]?.location || '',
+    classId: apiClass.id
+  }
+}
+
 function Schedule() {
-  const availableCourses = useMemo(() => mockCourses.map((course) => enrichCourse(course)), [])
+  const { isLoggedIn } = useAuthStore()
+  const [userInfo, setUserInfo] = useState({ grade: 0, semester: 0 })
+  const [availableCourses, setAvailableCourses] = useState(() => mockCourses.map((course) => enrichCourse(course)))
+  const [isLoadingCourses, setIsLoadingCourses] = useState(false)
   const [aiSchedules, setAiSchedules] = useState([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isGenerating, setIsGenerating] = useState(false)
   const [lastGeneratedAt, setLastGeneratedAt] = useState(null)
   const [savedSchedules, setSavedSchedules] = useState(loadSavedSchedules)
   const [savedIndex, setSavedIndex] = useState(0)
+  const [isLoadingApi, setIsLoadingApi] = useState(false)
+  const [isApiDataLoaded, setIsApiDataLoaded] = useState(false)
   const [editingScheduleId, setEditingScheduleId] = useState(null)
   const [isSavedPanelOpen, setIsSavedPanelOpen] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -455,7 +644,7 @@ function Schedule() {
     {
       id: 'ai-welcome',
       role: 'ai',
-      text: '안녕하세요! 원하는 요일이나 학점 조건을 말해주시면 시간표를 더 정교하게 도와드릴게요.'
+      text: '원하는 요일이나 시간대를 구체적으로 말해주시면 그에 맞춰 추천 또는 편집 방법을 안내해 드릴게요. 대신에 요구사항 더 있으면 알려주세요. 시간표 더 정교하게 추천해드릴게요.'
     }
   ])
   const [chatInput, setChatInput] = useState('')
@@ -469,6 +658,8 @@ function Schedule() {
   const navRef = useRef(null)
   const [isSaveConfirmOpen, setIsSaveConfirmOpen] = useState(false)
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
+  const [isCourseDeleteConfirmOpen, setIsCourseDeleteConfirmOpen] = useState(false)
+  const [courseToDelete, setCourseToDelete] = useState(null) // 삭제할 과목 정보
   const [scheduleToDelete, setScheduleToDelete] = useState(null)
   const [courseToAdd, setCourseToAdd] = useState(null)
   const [isCourseAddModalOpen, setIsCourseAddModalOpen] = useState(false)
@@ -488,23 +679,53 @@ function Schedule() {
   const [isRenameModalOpen, setIsRenameModalOpen] = useState(false) // 이름 변경 모달
   const [scheduleToRename, setScheduleToRename] = useState(null) // 이름 변경할 시간표
   const [newScheduleName, setNewScheduleName] = useState('') // 새 시간표 이름
+  const [clickedCourseForDelete, setClickedCourseForDelete] = useState(null) // 삭제를 위해 클릭된 과목
 
   const currentSchedule = aiSchedules[currentIndex]
-  const currentSavedSchedule = savedSchedules[savedIndex]
+  
+  // 학기별로 필터링된 시간표 목록
+  const filteredSavedSchedules = selectedSemester
+    ? savedSchedules.filter(schedule => {
+        // year 필드를 우선 사용, 없으면 semester 필드로 변환
+        let scheduleSemester = schedule.year || ''
+        if (!scheduleSemester && schedule.semester !== undefined) {
+          const year = new Date().getFullYear()
+          scheduleSemester = `${year}-${schedule.semester}`
+        }
+        // 학기 형식이 "2025-1" 같은 형식이면 비교
+        return scheduleSemester === selectedSemester || scheduleSemester.includes(selectedSemester)
+      })
+    : savedSchedules
+  
+  const currentSavedSchedule = filteredSavedSchedules[savedIndex]
   const currentBrowseSchedule = browseSchedules[browseIndex]
 
   useEffect(() => {
     if (typeof window === 'undefined') return
+    // API에서 데이터를 받아온 경우에는 로컬 스토리지에 저장하지 않음
+    if (isApiDataLoaded) return
     window.localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(savedSchedules))
-  }, [savedSchedules])
+  }, [savedSchedules, isApiDataLoaded])
 
   useEffect(() => {
     setSavedIndex((prev) => {
-      if (savedSchedules.length === 0) return 0
-      const next = Math.min(prev, savedSchedules.length - 1)
+      const filtered = selectedSemester
+        ? savedSchedules.filter(schedule => {
+            let scheduleSemester = ''
+            if (schedule.semester !== undefined) {
+              const year = new Date().getFullYear()
+              scheduleSemester = `${year}-${schedule.semester}`
+            } else {
+              scheduleSemester = schedule.label || ''
+            }
+            return scheduleSemester === selectedSemester || scheduleSemester.includes(selectedSemester)
+          })
+        : savedSchedules
+      if (filtered.length === 0) return 0
+      const next = Math.min(prev, filtered.length - 1)
       return next < 0 ? 0 : next
     })
-  }, [savedSchedules])
+  }, [savedSchedules, selectedSemester])
 
   useEffect(() => {
     if (!currentSavedSchedule) {
@@ -554,6 +775,126 @@ function Schedule() {
       setIsSavedPanelOpen(false)
     }
   }, [savedSchedules])
+
+  // API에서 시간표 데이터 가져오기
+  useEffect(() => {
+    const fetchTimetables = async () => {
+      if (!isLoggedIn) {
+        // 로그인하지 않은 경우 로컬 스토리지에서만 로드
+        return
+      }
+
+      setIsLoadingApi(true)
+      try {
+        const response = await axiosInstance.get('/api/timetables/me')
+        const apiTimetables = response.data || []
+        
+        if (Array.isArray(apiTimetables) && apiTimetables.length > 0) {
+          // API 데이터를 기존 구조로 변환
+          const convertedSchedules = apiTimetables.map(convertApiTimetableToSchedule)
+          
+          // 변환된 데이터로 savedSchedules 업데이트
+          setSavedSchedules(convertedSchedules)
+          setIsApiDataLoaded(true) // API 데이터 로드 완료 플래그 설정
+          
+          // isActive가 true인 대표 시간표 찾기
+          const activeSchedule = convertedSchedules.find(s => s.isActive === true)
+          if (activeSchedule && activeSchedule.year) {
+            // 대표 시간표의 year 값을 selectedSemester로 설정
+            setSelectedSemester(activeSchedule.year)
+            
+            // 해당 학기의 시간표 목록에서 대표 시간표의 인덱스 찾기
+            const filtered = convertedSchedules.filter(schedule => {
+              const scheduleYear = schedule.year || ''
+              return scheduleYear === activeSchedule.year
+            })
+            const activeIndex = filtered.findIndex(s => s.id === activeSchedule.id)
+            if (activeIndex >= 0) {
+              setSavedIndex(activeIndex)
+            }
+          } else if (convertedSchedules.length > 0) {
+            // 대표 시간표가 없으면 첫 번째 시간표를 선택
+            setSavedIndex(0)
+          }
+        } else {
+          // API에서 데이터가 없으면 로컬 스토리지에서 로드
+          const localSchedules = loadSavedSchedules()
+          if (localSchedules.length > 0) {
+            setSavedSchedules(localSchedules)
+          }
+          setIsApiDataLoaded(false) // 로컬 데이터 사용
+        }
+      } catch (error) {
+        console.error('Failed to fetch timetables from API:', error)
+        // API 호출 실패 시 로컬 스토리지에서 로드
+        const localSchedules = loadSavedSchedules()
+        if (localSchedules.length > 0) {
+          setSavedSchedules(localSchedules)
+        }
+      } finally {
+        setIsLoadingApi(false)
+      }
+    }
+
+    fetchTimetables()
+  }, [isLoggedIn])
+
+  // 사용자 정보 가져오기
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      if (!isLoggedIn) return
+
+      try {
+        const response = await axiosInstance.get('/api/users/me')
+        const userData = response.data
+        setUserInfo({
+          grade: userData.grade || 0,
+          semester: userData.semester || 0
+        })
+      } catch (error) {
+        console.error('Failed to fetch user info:', error)
+        // 기본값 유지
+      }
+    }
+
+    fetchUserInfo()
+  }, [isLoggedIn])
+
+  // API에서 과목 목록 가져오기
+  useEffect(() => {
+    const fetchClasses = async () => {
+      if (!isLoggedIn) {
+        // 로그인하지 않은 경우 mock 데이터 사용
+        return
+      }
+
+      setIsLoadingCourses(true)
+      try {
+        const response = await axiosInstance.get('/api/classes')
+        const apiClasses = response.data || []
+        
+        if (Array.isArray(apiClasses) && apiClasses.length > 0) {
+          // API 데이터를 기존 구조로 변환
+          const convertedCourses = apiClasses.map(convertApiClassToCourse)
+          const enrichedCourses = convertedCourses.map((course) => enrichCourse(course))
+          
+          // 변환된 데이터로 availableCourses 업데이트
+          setAvailableCourses(enrichedCourses)
+        } else {
+          // API에서 데이터가 없으면 mock 데이터 사용
+          setAvailableCourses(mockCourses.map((course) => enrichCourse(course)))
+        }
+      } catch (error) {
+        console.error('Failed to fetch classes from API:', error)
+        // API 호출 실패 시 mock 데이터 사용
+        setAvailableCourses(mockCourses.map((course) => enrichCourse(course)))
+      } finally {
+        setIsLoadingCourses(false)
+      }
+    }
+
+    fetchClasses()
+  }, [isLoggedIn])
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -658,13 +999,40 @@ function Schedule() {
     setIsSaveConfirmOpen(true)
   }
 
-  const confirmSaveSchedule = () => {
+  const confirmSaveSchedule = async () => {
     const targetSchedule = currentSchedule
     if (!targetSchedule) return
     const signature = signatureFromCourses(targetSchedule.courses)
 
     const baseLabel = targetSchedule.label || getSemesterLabel()
     const uniqueLabel = generateUniqueLabel(baseLabel, savedSchedules)
+
+    // API 호출 (로그인 상태인 경우)
+    if (isLoggedIn) {
+      try {
+        // 모든 classId 배열 생성
+        const classIds = targetSchedule.courses
+          .filter(course => course.classId)
+          .map(course => parseInt(course.classId))
+        
+        const apiPayload = {
+          name: uniqueLabel,
+          grade: userInfo.grade || 0,
+          year: '2025-2',
+          isActive: false,
+          classIds: classIds,
+          semester: userInfo.semester || 0
+        }
+
+        console.log('Saving timetable to API:', apiPayload)
+        await axiosInstance.post('/api/timetables', apiPayload)
+        console.log('Timetable saved successfully')
+      } catch (error) {
+        console.error('Failed to save timetable to API:', error)
+        console.error('Request URL:', error.config?.url)
+        // API 실패 시에도 로컬에서 저장 (사용자 경험을 위해)
+      }
+    }
 
     const payload = {
       ...targetSchedule,
@@ -681,18 +1049,50 @@ function Schedule() {
     setActiveTab('제작')
   }
 
-  const handleSaveBrowseSchedule = (schedule) => {
+  const handleSaveBrowseSchedule = async (schedule) => {
     const signature = signatureFromCourses(schedule.courses)
 
+    // saved-card-title에 표시된 값 그대로 사용 (예: "학생 1", "학생 2")
+    // browseSchedules에서 현재 schedule의 인덱스를 찾아서 "학생 {index + 1}" 형식으로 생성
+    const scheduleIndex = browseSchedules.findIndex(s => s.id === schedule.id)
+    const scheduleName = scheduleIndex >= 0 ? `학생 ${scheduleIndex + 1}` : (schedule.label || getSemesterLabel())
     const baseLabel = schedule.label || getSemesterLabel()
     const uniqueLabel = generateUniqueLabel(baseLabel, savedSchedules)
+
+    // API 호출 (로그인 상태인 경우)
+    if (isLoggedIn) {
+      try {
+        // 모든 classId 배열 생성
+        const classIds = schedule.courses
+          .filter(course => course.classId)
+          .map(course => parseInt(course.classId))
+        
+        const apiPayload = {
+          name: scheduleName,
+          grade: userInfo.grade || 0,
+          year: '2025-2',
+          isActive: false,
+          classIds: classIds,
+          semester: userInfo.semester || 0
+        }
+
+        console.log('Saving browse timetable to API:', apiPayload)
+        await axiosInstance.post('/api/timetables', apiPayload)
+        console.log('Browse timetable saved successfully')
+      } catch (error) {
+        console.error('Failed to save browse timetable to API:', error)
+        console.error('Request URL:', error.config?.url)
+        // API 실패 시에도 로컬에서 저장 (사용자 경험을 위해)
+      }
+    }
 
     const payload = {
       ...schedule,
       id: `${schedule.id}-saved-${Date.now()}`,
       signature,
       savedAt: new Date().toISOString(),
-      label: uniqueLabel
+      label: scheduleName,
+      name: scheduleName
     }
 
     setSavedSchedules((prev) => [payload, ...prev])
@@ -701,7 +1101,20 @@ function Schedule() {
     setActiveTab('제작')
   }
 
-  const handleDeleteSchedule = (scheduleId) => {
+  const handleDeleteSchedule = async (scheduleId) => {
+    // API 호출 (로그인 상태인 경우)
+    if (isLoggedIn) {
+      try {
+        console.log('Deleting timetable via API:', { scheduleId })
+        await axiosInstance.delete(`/api/timetables/${scheduleId}`)
+        console.log('Timetable deleted successfully')
+      } catch (error) {
+        console.error('Failed to delete timetable via API:', error)
+        console.error('Request URL:', error.config?.url)
+        // API 실패 시에도 로컬에서 삭제 (사용자 경험을 위해)
+      }
+    }
+
     setSavedSchedules((prev) => prev.filter((schedule) => schedule.id !== scheduleId))
     if (selectedScheduleDetail?.id === scheduleId) {
       setSelectedScheduleDetail(null)
@@ -712,16 +1125,55 @@ function Schedule() {
     setFeedback({ type: 'success', text: '시간표를 삭제했어요.' })
   }
 
-  const handleRenameSchedule = (scheduleId, newName) => {
+  const handleRenameSchedule = async (scheduleId, newName) => {
     if (!newName.trim()) {
       setFeedback({ type: 'info', text: '이름을 입력해주세요.' })
       return
     }
     
+    const trimmedName = newName.trim()
+    
+    // API 호출 (로그인 상태인 경우)
+    if (isLoggedIn) {
+      try {
+        const schedule = savedSchedules.find(s => s.id === scheduleId)
+        if (schedule) {
+          // 모든 classId 배열 생성
+          const classIds = schedule.courses
+            .filter(course => course.classId)
+            .map(course => parseInt(course.classId))
+          
+          // semester를 "2025-1", "2025-여름" 형식으로 변환
+          const semester = schedule.semester || 0
+          let yearSemester = '2025-1'
+          if (semester === 1) yearSemester = '2025-1'
+          else if (semester === 2) yearSemester = '2025-2'
+          else if (semester === 3) yearSemester = '2025-여름'
+          else if (semester === 4) yearSemester = '2025-겨울'
+          
+          const apiPayload = {
+            name: trimmedName,
+            grade: schedule.grade || 0,
+            year: yearSemester,
+            isActive: schedule.isActive !== undefined ? schedule.isActive : true,
+            classIds: classIds
+          }
+
+          console.log('Renaming timetable via API:', { scheduleId, apiPayload })
+          await axiosInstance.put(`/api/timetables/${scheduleId}`, apiPayload)
+          console.log('Timetable renamed successfully')
+        }
+      } catch (error) {
+        console.error('Failed to rename timetable via API:', error)
+        console.error('Request URL:', error.config?.url)
+        // API 실패 시에도 로컬에서 이름 변경 (사용자 경험을 위해)
+      }
+    }
+    
     setSavedSchedules((prev) =>
       prev.map((schedule) => {
         if (schedule.id === scheduleId) {
-          return { ...schedule, label: newName.trim() }
+          return { ...schedule, label: trimmedName, name: trimmedName }
         }
         return schedule
       })
@@ -729,13 +1181,101 @@ function Schedule() {
     
     // 상세 화면이 열려있으면 업데이트
     if (selectedScheduleDetail && selectedScheduleDetail.id === scheduleId) {
-      setSelectedScheduleDetail((prev) => ({ ...prev, label: newName.trim() }))
+      setSelectedScheduleDetail((prev) => ({ ...prev, label: trimmedName, name: trimmedName }))
     }
     
     setIsRenameModalOpen(false)
     setScheduleToRename(null)
     setNewScheduleName('')
     setFeedback({ type: 'success', text: '시간표 이름을 변경했어요.' })
+  }
+
+  const handleSetAsActive = async (scheduleId) => {
+    const schedule = savedSchedules.find(s => s.id === scheduleId)
+    if (!schedule) return
+
+    // 원래 isActive가 true였던 시간표 찾기
+    const previousActiveSchedule = savedSchedules.find(s => s.isActive === true && s.id !== scheduleId)
+
+    // API 호출 (로그인 상태인 경우)
+    if (isLoggedIn) {
+      try {
+        // 현재 시간표를 isActive: true로 업데이트
+        const classIds = schedule.courses
+          .filter(course => course.classId)
+          .map(course => parseInt(course.classId))
+        
+        const semester = schedule.semester || 0
+        let yearSemester = '2025-1'
+        if (semester === 1) yearSemester = '2025-1'
+        else if (semester === 2) yearSemester = '2025-2'
+        else if (semester === 3) yearSemester = '2025-여름'
+        else if (semester === 4) yearSemester = '2025-겨울'
+        
+        const apiPayload = {
+          name: schedule.name || schedule.label || '',
+          grade: schedule.grade || 0,
+          year: schedule.year || yearSemester,
+          isActive: true,
+          classIds: classIds
+        }
+
+        console.log('Setting timetable as active via API:', { scheduleId, apiPayload })
+        await axiosInstance.put(`/api/timetables/${scheduleId}`, apiPayload)
+        console.log('Timetable set as active successfully')
+
+        // 이전 대표 시간표가 있으면 isActive: false로 업데이트
+        if (previousActiveSchedule) {
+          const prevClassIds = previousActiveSchedule.courses
+            .filter(course => course.classId)
+            .map(course => parseInt(course.classId))
+          
+          const prevSemester = previousActiveSchedule.semester || 0
+          let prevYearSemester = '2025-1'
+          if (prevSemester === 1) prevYearSemester = '2025-1'
+          else if (prevSemester === 2) prevYearSemester = '2025-2'
+          else if (prevSemester === 3) prevYearSemester = '2025-여름'
+          else if (prevSemester === 4) prevYearSemester = '2025-겨울'
+          
+          const prevApiPayload = {
+            name: previousActiveSchedule.name || previousActiveSchedule.label || '',
+            grade: previousActiveSchedule.grade || 0,
+            year: previousActiveSchedule.year || prevYearSemester,
+            isActive: false,
+            classIds: prevClassIds
+          }
+
+          console.log('Setting previous active timetable to inactive via API:', { scheduleId: previousActiveSchedule.id, prevApiPayload })
+          await axiosInstance.put(`/api/timetables/${previousActiveSchedule.id}`, prevApiPayload)
+          console.log('Previous active timetable set to inactive successfully')
+        }
+      } catch (error) {
+        console.error('Failed to set timetable as active via API:', error)
+        console.error('Request URL:', error.config?.url)
+        // API 실패 시에도 로컬에서 업데이트 (사용자 경험을 위해)
+      }
+    }
+
+    // 로컬 상태 업데이트
+    setSavedSchedules((prev) =>
+      prev.map((s) => {
+        if (s.id === scheduleId) {
+          return { ...s, isActive: true }
+        }
+        if (previousActiveSchedule && s.id === previousActiveSchedule.id) {
+          return { ...s, isActive: false }
+        }
+        return s
+      })
+    )
+
+    // 상세 화면이 열려있으면 업데이트
+    if (selectedScheduleDetail && selectedScheduleDetail.id === scheduleId) {
+      setSelectedScheduleDetail((prev) => ({ ...prev, isActive: true }))
+    }
+
+    setIsDetailMenuOpen(false)
+    setFeedback({ type: 'success', text: '대표 시간표로 지정했어요.' })
   }
 
   const confirmDeleteSchedule = () => {
@@ -757,11 +1297,29 @@ function Schedule() {
     setEditingScheduleId((prev) => (prev === scheduleId ? null : scheduleId))
   }
 
-  const handleRemoveCourse = (scheduleId, courseId) => {
+  const handleRemoveCourse = async (scheduleId, courseId, classId = null) => {
+    // classId가 없으면 API 호출 불가 (로컬 데이터만 삭제)
+    if (isLoggedIn && classId) {
+      try {
+        console.log('Deleting course:', { scheduleId, classId })
+        await axiosInstance.delete(`/api/timetables/${scheduleId}/classes/${classId}`)
+        console.log('Course deleted successfully')
+      } catch (error) {
+        console.error('Failed to delete course from API:', error)
+        console.error('Request URL:', error.config?.url)
+        // API 실패 시에도 로컬에서 삭제 (사용자 경험을 위해)
+      }
+    }
+
     setSavedSchedules((prev) =>
       prev.map((schedule) => {
         if (schedule.id !== scheduleId) return schedule
-        const updatedCourses = schedule.courses.filter((course) => course.courseId !== courseId)
+        // classId가 있으면 classId로, 없으면 courseId로 삭제
+        const updatedCourses = schedule.courses.filter((course) => 
+          classId 
+            ? course.classId !== classId
+            : course.courseId !== courseId || course.classId
+        )
         const summary = summariseCourses(updatedCourses)
         const updated = {
           ...schedule,
@@ -778,13 +1336,23 @@ function Schedule() {
     )
   }
 
-  const handleAddCourse = (scheduleId, courseToAdd, replaceConflicting = false) => {
-    setSavedSchedules((prev) =>
-      prev.map((schedule) => {
-        if (schedule.id !== scheduleId) return schedule
-        if (schedule.courses.some((course) => course.courseId === courseToAdd.courseId)) return schedule
-        
-        const conflictingCourses = findConflictingCourses(schedule.courses, courseToAdd)
+  const handleAddCourse = async (scheduleId, courseToAdd, replaceConflicting = false, clearSelection = true) => {
+    // 먼저 로컬 상태에서 schedule 찾기
+    const currentSchedule = savedSchedules.find(s => s.id === scheduleId)
+    if (!currentSchedule) return
+
+    // classId가 있으면 classId로, 없으면 courseId로 중복 체크
+    const isDuplicate = currentSchedule.courses.some((course) => 
+      courseToAdd.classId 
+        ? course.classId === courseToAdd.classId
+        : course.courseId === courseToAdd.courseId && !course.classId
+    )
+    if (isDuplicate) {
+      if (clearSelection) setCourseToAdd(null)
+      return
+    }
+    
+    const conflictingCourses = findConflictingCourses(currentSchedule.courses, courseToAdd)
         if (conflictingCourses.length > 0 && !replaceConflicting) {
           setConflictInfo({
             scheduleId,
@@ -792,10 +1360,11 @@ function Schedule() {
             conflictingCourses
           })
           setIsTimeConflictModalOpen(true)
-          return schedule
+      // 모달이 뜨면 선택 유지 (clearSelection이 true일 때만 해제)
+      return
         }
 
-        let updatedCourses = [...schedule.courses]
+    let updatedCourses = [...currentSchedule.courses]
         if (replaceConflicting && conflictingCourses.length > 0) {
           // 충돌하는 과목들 제거
           const conflictingIds = new Set(conflictingCourses.map(c => c.courseId))
@@ -803,20 +1372,62 @@ function Schedule() {
         }
         
         updatedCourses = [...updatedCourses, courseToAdd]
+
+    // API 호출 (로그인 상태이고 classId가 있는 경우)
+    if (isLoggedIn && courseToAdd.classId) {
+      try {
+        // 충돌하는 과목들을 제거한 후의 모든 classId 배열 생성
+        const classIds = updatedCourses
+          .filter(course => course.classId)
+          .map(course => parseInt(course.classId))
+        
+        // semester를 "2025-1", "2025-여름" 형식으로 변환
+        const semester = currentSchedule.semester || 0
+        let yearSemester = '2025-1'
+        if (semester === 1) yearSemester = '2025-1'
+        else if (semester === 2) yearSemester = '2025-2'
+        else if (semester === 3) yearSemester = '2025-여름'
+        else if (semester === 4) yearSemester = '2025-겨울'
+        
+        const payload = {
+          name: currentSchedule.name || currentSchedule.label || '',
+          grade: currentSchedule.grade || 0,
+          year: yearSemester,
+          isActive: currentSchedule.isActive !== undefined ? currentSchedule.isActive : true,
+          classIds: classIds
+        }
+
+        console.log('Adding course to API:', { scheduleId, payload })
+        await axiosInstance.put(`/api/timetables/${scheduleId}`, payload)
+        console.log('Course added successfully')
+      } catch (error) {
+        console.error('Failed to add course to API:', error)
+        console.error('Request URL:', error.config?.url)
+        // API 실패 시에도 로컬에서 추가 (사용자 경험을 위해)
+      }
+    }
+
         const summary = summariseCourses(updatedCourses)
         const updated = {
-          ...schedule,
+      ...currentSchedule,
           courses: updatedCourses,
           ...summary,
           signature: signatureFromCourses(updatedCourses)
         }
+
+    setSavedSchedules((prev) =>
+      prev.map((schedule) => {
+        if (schedule.id !== scheduleId) return schedule
+        return updated
+      })
+    )
+
         // 제작 탭 상세 화면이 열려있으면 업데이트
         if (selectedScheduleDetail && selectedScheduleDetail.id === scheduleId) {
           setSelectedScheduleDetail(updated)
         }
-        return updated
-      })
-    )
+    // 추가 성공 시 선택 해제
+    if (clearSelection) setCourseToAdd(null)
   }
 
   const handleReplaceCourse = () => {
@@ -831,6 +1442,7 @@ function Schedule() {
   const handleCancelReplace = () => {
     setIsTimeConflictModalOpen(false)
     setConflictInfo(null)
+    // 취소 시 선택 유지 (사용자가 다시 시도할 수 있도록)
   }
 
   const handleDragStart = (e) => {
@@ -874,13 +1486,20 @@ function Schedule() {
   }, [isDragging, handleDrag, handleDragEnd])
 
   const getAddableCourses = (schedule) => {
-    const existingIds = new Set(schedule.courses.map((course) => course.courseId))
+    // classId가 있으면 classId로, 없으면 courseId로 중복 체크
+    const existingClassIds = new Set(schedule.courses.map((course) => course.classId).filter(Boolean))
+    const existingCourseIds = new Set(schedule.courses.filter(c => !c.classId).map((course) => course.courseId))
+    
     return availableCourses
-      .map((course) => ({
-        ...course,
-        isAdded: existingIds.has(course.courseId)
-      }))
-      .slice(0, 12)
+      .map((course) => {
+        const isAdded = course.classId 
+          ? existingClassIds.has(course.classId)
+          : existingCourseIds.has(course.courseId)
+        return {
+          ...course,
+          isAdded
+        }
+      })
   }
 
   const handleSavedNavigation = (direction) => {
@@ -892,7 +1511,7 @@ function Schedule() {
     })
   }
 
-  const handleChatSubmit = (event) => {
+  const handleChatSubmit = async (event) => {
     event.preventDefault()
     if (!chatInput.trim()) return
     const userText = chatInput.trim()
@@ -900,8 +1519,57 @@ function Schedule() {
     setChatMessages((prev) => [...prev, userMessage])
     setChatInput('')
     setIsChatting(true)
-    const scheduleContext = currentSchedule || currentSavedSchedule
-    const aiReply = buildAiChatReply(userText, scheduleContext, savedSchedules.length)
+    
+    // API 호출 (로그인 상태인 경우)
+    let aiReply = '요청 내용을 바탕으로 시간표 10개를 만들었어요. 추가 요구사항이 있으면 알려주세요. 더 정교한 시간표를 추천드릴게요.'
+    
+    if (isLoggedIn) {
+      try {
+        const apiPayload = {
+          plainTextInput: userText
+        }
+        
+        console.log('Sending chat message to API:', apiPayload)
+        const response = await axiosInstance.post('/api/timetables/generate', apiPayload)
+        console.log('Timetable generation response:', response.data)
+        
+        // API 응답으로 시간표 생성
+        if (response.data && Array.isArray(response.data)) {
+          // API 응답의 timetables 배열을 기존 구조로 변환
+          const convertedSchedules = response.data.map((apiTimetable, index) => {
+            const converted = convertApiTimetableToSchedule(apiTimetable)
+            // AI 탭용 추가 정보 설정
+            return {
+              ...converted,
+              label: `추천 ${index + 1}`,
+              theme: AI_THEMES[index % AI_THEMES.length],
+              summary: describeTheme(AI_THEMES[index % AI_THEMES.length].id)
+            }
+          })
+          
+          setAiSchedules(convertedSchedules)
+          setCurrentIndex(0)
+        } else {
+          // API 응답이 없거나 형식이 다르면 기존 로직 사용
+          const generated = buildAiSchedules()
+          setAiSchedules(generated)
+          setCurrentIndex(0)
+        }
+      } catch (error) {
+        console.error('Failed to generate timetable via API:', error)
+        console.error('Request URL:', error.config?.url)
+        // API 실패 시에도 기존 로직 실행 (사용자 경험을 위해)
+        const generated = buildAiSchedules()
+        setAiSchedules(generated)
+        setCurrentIndex(0)
+      }
+    } else {
+      // 로그인하지 않은 경우 기존 로직 사용
+      const generated = buildAiSchedules()
+      setAiSchedules(generated)
+      setCurrentIndex(0)
+    }
+    
     if (chatTimerRef.current) {
       clearTimeout(chatTimerRef.current)
     }
@@ -922,16 +1590,38 @@ function Schedule() {
   
   const getSavedAddableCoursesWithStatus = () => {
     if (!isEditingSaved || !currentSavedSchedule) return []
-    const existingIds = new Set(currentSavedSchedule.courses.map((course) => course.courseId))
+    // classId가 있으면 classId로, 없으면 courseId로 중복 체크
+    const existingClassIds = new Set(currentSavedSchedule.courses.map((course) => course.classId).filter(Boolean))
+    const existingCourseIds = new Set(currentSavedSchedule.courses.filter(c => !c.classId).map((course) => course.courseId))
+    
     return availableCourses
-      .map((course) => ({
-        ...course,
-        isAdded: existingIds.has(course.courseId)
-      }))
-      .slice(0, 12)
+      .map((course) => {
+        const isAdded = course.classId 
+          ? existingClassIds.has(course.classId)
+          : existingCourseIds.has(course.courseId)
+        return {
+          ...course,
+          isAdded
+        }
+      })
   }
   
   const savedAddableCoursesWithStatus = getSavedAddableCoursesWithStatus()
+
+  // 그리드 외부 클릭 시 삭제 버튼 숨기기
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (clickedCourseForDelete && !e.target.closest('.timetable-block')) {
+        setClickedCourseForDelete(null)
+      }
+    }
+    if (clickedCourseForDelete) {
+      document.addEventListener('click', handleClickOutside)
+      return () => {
+        document.removeEventListener('click', handleClickOutside)
+      }
+    }
+  }, [clickedCourseForDelete])
 
   useEffect(() => {
     if (isEditingSaved || isEditingDetail || isSemesterSelectOpen) {
@@ -985,7 +1675,42 @@ function Schedule() {
         <div className="schedule-nav-slider" style={sliderStyle} />
         <button 
           className={`schedule-nav-item ${activeTab === '시간표' ? 'active' : ''}`}
-          onClick={() => setActiveTab('시간표')}
+          onClick={() => {
+            setActiveTab('시간표')
+            // isActive가 true인 시간표 찾기
+            const activeScheduleIndex = savedSchedules.findIndex(s => s.isActive === true)
+            if (activeScheduleIndex >= 0) {
+              // 해당 시간표의 학기 찾기
+              const activeSchedule = savedSchedules[activeScheduleIndex]
+              let scheduleSemester = ''
+              if (activeSchedule.semester !== undefined) {
+                const year = new Date().getFullYear()
+                scheduleSemester = `${year}-${activeSchedule.semester}`
+              } else if (activeSchedule.year) {
+                scheduleSemester = activeSchedule.year
+              }
+              if (scheduleSemester) {
+                setSelectedSemester(scheduleSemester)
+              }
+              // 필터링된 목록에서 해당 시간표의 인덱스 찾기
+              const filtered = scheduleSemester
+                ? savedSchedules.filter(schedule => {
+                    let sSemester = ''
+                    if (schedule.semester !== undefined) {
+                      const year = new Date().getFullYear()
+                      sSemester = `${year}-${schedule.semester}`
+                    } else if (schedule.year) {
+                      sSemester = schedule.year
+                    }
+                    return sSemester === scheduleSemester || sSemester.includes(scheduleSemester)
+                  })
+                : savedSchedules
+              const filteredIndex = filtered.findIndex(s => s.id === activeSchedule.id)
+              if (filteredIndex >= 0) {
+                setSavedIndex(filteredIndex)
+              }
+            }
+          }}
         >
           시간표
         </button>
@@ -1014,6 +1739,236 @@ function Schedule() {
             {savedEmpty ? (
               <div className="page-card empty-state">
                 <p className="page-text">아직 저장된 시간표가 없어요. 제작 탭에서 마음에 드는 조합을 저장해 보세요.</p>
+              </div>
+            ) : selectedSemester && filteredSavedSchedules.length === 0 ? (
+              <div className="page-card empty-state">
+                <div style={{ position: 'relative', width: '100%' }}>
+                  <div className="saved-card-top" style={{ marginBottom: '20px' }}>
+                    <div>
+                      <div className="saved-card-title-row">
+                        <p className="saved-card-title">{getSemesterLabel(selectedSemester)}</p>
+                      </div>
+                    </div>
+                    <div className="saved-card-actions">
+                      <div className="menu-container" ref={menuRef}>
+                        <button 
+                          className="menu-button" 
+                          onClick={() => setIsMenuOpen(!isMenuOpen)}
+                        >
+                          <span className="menu-dots">⋮</span>
+                        </button>
+                        {isMenuOpen && (
+                          <div className="menu-dropdown">
+                            <button 
+                              className="menu-item"
+                              onClick={() => {
+                                setIsMenuOpen(false)
+                                setIsSemesterSelectOpen(true)
+                              }}
+                            >
+                              학기 선택
+                            </button>
+                            <button 
+                              className="menu-item"
+                              onClick={() => {
+                                setIsMenuOpen(false)
+                                // 빈 시간표가 있으면 수정 모드로, 없으면 새로 생성
+                                if (filteredSavedSchedules.length > 0) {
+                                  toggleEditSchedule(filteredSavedSchedules[0].id)
+                                } else {
+                                  // 빈 시간표 생성
+                                  const newScheduleName = getSemesterLabel(selectedSemester)
+                                  let newScheduleId = `new-${Date.now()}`
+                                  
+                                  if (isLoggedIn) {
+                                    // API 호출은 async이므로 여기서는 로컬만 생성
+                                    let semesterNum = 1
+                                    if (selectedSemester === '2025-여름') {
+                                      semesterNum = 3
+                                    } else if (selectedSemester === '2025-겨울') {
+                                      semesterNum = 4
+                                    } else {
+                                      const semesterMatch = selectedSemester.match(/(\d+)-(\d+)/)
+                                      semesterNum = semesterMatch ? parseInt(semesterMatch[2]) : 1
+                                    }
+                                    
+                                    const newSchedule = {
+                                      id: newScheduleId,
+                                      name: newScheduleName,
+                                      label: newScheduleName,
+                                      courses: [],
+                                      totalCredits: 0,
+                                      requiredCount: 0,
+                                      electiveCount: 0,
+                                      signature: '',
+                                      grade: 0,
+                                      semester: semesterNum,
+                                      isActive: true,
+                                      savedAt: new Date().toISOString()
+                                    }
+                                    
+                                    setSavedSchedules((prev) => [newSchedule, ...prev])
+                                    setSavedIndex(0)
+                                    toggleEditSchedule(newScheduleId)
+                                    
+                                    // API 호출은 백그라운드에서
+                                    // semester를 "2025-1", "2025-여름" 형식으로 변환
+                                    let yearSemester = '2025-1'
+                                    if (semesterNum === 1) yearSemester = '2025-1'
+                                    else if (semesterNum === 2) yearSemester = '2025-2'
+                                    else if (semesterNum === 3) yearSemester = '2025-여름'
+                                    else if (semesterNum === 4) yearSemester = '2025-겨울'
+                                    
+                                    axiosInstance.post('/api/timetables', {
+                                      name: newScheduleName,
+                                      grade: 0,
+                                      year: yearSemester,
+                                      isActive: true,
+                                      classIds: [],
+                                      semester: semesterNum
+                                    }).then(response => {
+                                      if (response.data?.id) {
+                                        setSavedSchedules((prev) =>
+                                          prev.map(s => s.id === newScheduleId ? { ...s, id: response.data.id } : s)
+                                        )
+                                      }
+                                    }).catch(error => {
+                                      console.error('Failed to create timetable via API:', error)
+                                    })
+                                  } else {
+                                    const newSchedule = {
+                                      id: newScheduleId,
+                                      name: newScheduleName,
+                                      label: newScheduleName,
+                                      courses: [],
+                                      totalCredits: 0,
+                                      requiredCount: 0,
+                                      electiveCount: 0,
+                                      signature: '',
+                                      grade: 0,
+                                      semester: semesterNum,
+                                      isActive: true,
+                                      savedAt: new Date().toISOString()
+                                    }
+                                    
+                                    setSavedSchedules((prev) => [newSchedule, ...prev])
+                                    setSavedIndex(0)
+                                    toggleEditSchedule(newScheduleId)
+                                  }
+                                }
+                              }}
+                            >
+                              시간표 수정하기
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <p className="page-text">{getSemesterLabel(selectedSemester)} 학기의 시간표가 없어요.</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '20px', width: '100%' }}>
+                  <button 
+                    className="ghost-btn" 
+                    onClick={() => setIsSemesterSelectOpen(true)}
+                    style={{ width: '100%' }}
+                  >
+                    학기 선택하기
+                  </button>
+                  <button 
+                    className="primary-btn" 
+                    onClick={async () => {
+                      // 빈 시간표 생성
+                      const newScheduleName = getSemesterLabel(selectedSemester)
+                      let newScheduleId = `new-${Date.now()}`
+                      let semesterNum = 1
+                      if (selectedSemester === '2025-여름') {
+                        semesterNum = 3
+                      } else if (selectedSemester === '2025-겨울') {
+                        semesterNum = 4
+                      } else {
+                        const semesterMatch = selectedSemester.match(/(\d+)-(\d+)/)
+                        semesterNum = semesterMatch ? parseInt(semesterMatch[2]) : 1
+                      }
+                      
+                      // 로컬 상태에 새 시간표 추가
+                      const newSchedule = {
+                        id: newScheduleId,
+                        name: newScheduleName,
+                        label: newScheduleName,
+                        courses: [],
+                        totalCredits: 0,
+                        requiredCount: 0,
+                        electiveCount: 0,
+                        signature: '',
+                        grade: 0,
+                        semester: semesterNum,
+                        isActive: true,
+                        savedAt: new Date().toISOString()
+                      }
+
+                      setSavedSchedules((prev) => {
+                        const updated = [newSchedule, ...prev]
+                        // 새로 만든 시간표가 필터링된 목록의 첫 번째가 되도록 인덱스 설정
+                        const filtered = selectedSemester
+                          ? updated.filter(schedule => {
+                              const scheduleSemester = schedule.semester !== undefined 
+                                ? `${new Date().getFullYear()}-${schedule.semester}` 
+                                : schedule.label || ''
+                              return scheduleSemester === selectedSemester || scheduleSemester.includes(selectedSemester)
+                            })
+                          : updated
+                        // 새로 만든 시간표의 인덱스 찾기
+                        const newIndex = filtered.findIndex(s => s.id === newScheduleId)
+                        if (newIndex >= 0) {
+                          setSavedIndex(newIndex)
+                        } else {
+                          setSavedIndex(0)
+                        }
+                        return updated
+                      })
+                      toggleEditSchedule(newScheduleId)
+                      setFeedback({ type: 'success', text: '새 시간표를 생성했어요.' })
+                      
+                      // API 호출 (로그인 상태인 경우)
+                      if (isLoggedIn) {
+                        try {
+                          // semester를 "2025-1", "2025-여름" 형식으로 변환
+                          let yearSemester = '2025-1'
+                          if (semesterNum === 1) yearSemester = '2025-1'
+                          else if (semesterNum === 2) yearSemester = '2025-2'
+                          else if (semesterNum === 3) yearSemester = '2025-여름'
+                          else if (semesterNum === 4) yearSemester = '2025-겨울'
+                          
+                          const apiPayload = {
+                            name: newScheduleName,
+                            grade: 0,
+                            year: yearSemester,
+                            isActive: true,
+                            classIds: [],
+                            semester: semesterNum
+                          }
+
+                          console.log('Creating new timetable via API:', apiPayload)
+                          const response = await axiosInstance.post('/api/timetables', apiPayload)
+                          console.log('New timetable created successfully:', response.data)
+                          
+                          if (response.data?.id) {
+                            setSavedSchedules((prev) =>
+                              prev.map(s => s.id === newScheduleId ? { ...s, id: response.data.id } : s)
+                            )
+                          }
+                        } catch (error) {
+                          console.error('Failed to create timetable via API:', error)
+                          // API 실패 시에도 로컬에서 생성 (사용자 경험을 위해)
+                        }
+                      }
+                    }}
+                    style={{ width: '100%' }}
+                  >
+                    시간표 등록하기
+                  </button>
+                </div>
               </div>
             ) : (
               currentSavedSchedule && (
@@ -1103,8 +2058,18 @@ function Schedule() {
                     editable={isEditingSaved}
                     onSelectCourse={(courseId) => handleRemoveCourse(currentSavedSchedule.id, courseId)}
                     onBlockClick={(course) => {
+                      if (isEditingSaved) {
+                        // 편집 모드일 때는 삭제를 위해 클릭된 과목 설정
+                        setClickedCourseForDelete(course)
+                      } else {
                       setSelectedCourse(course)
                       setIsCourseModalOpen(true)
+                      }
+                    }}
+                    clickedCourse={clickedCourseForDelete}
+                    onDeleteCourse={(courseId, classId) => {
+                      handleRemoveCourse(currentSavedSchedule.id, courseId, classId)
+                      setClickedCourseForDelete(null)
                     }}
                   />
                 </div>
@@ -1132,23 +2097,49 @@ function Schedule() {
                       ×
                     </button>
                   </div>
-                  <div className="edit-bottom-sheet-content">
-                    <p className="edit-hint">시간표 블록 또는 아래 버튼으로 과목을 삭제/추가할 수 있어요.</p>
-                    <div className="add-course-grid">
+                  <div className="edit-bottom-sheet-content" style={{ display: 'flex', flexDirection: 'column' }}>
+                    <div className="add-course-grid" style={{ flex: 1, overflowY: 'auto' }}>
                       {savedAddableCourses.length === 0 ? (
                         <span className="empty-state-hint">추가할 수 있는 과목이 없어요.</span>
                       ) : (
-                        savedAddableCourses.map((course) => (
-                          <button
-                            key={course.courseId}
-                            className="add-course-pill"
-                            onClick={() => handleAddCourse(currentSavedSchedule.id, course)}
+                        savedAddableCourses.map((course) => {
+                          // classId가 있으면 classId로, 없으면 courseId로 중복 체크
+                          const existingClassIds = new Set((currentSavedSchedule?.courses || []).map((c) => c.classId).filter(Boolean))
+                          const existingCourseIds = new Set((currentSavedSchedule?.courses || []).filter(c => !c.classId).map((c) => c.courseId))
+                          const isAdded = course.classId 
+                            ? existingClassIds.has(course.classId)
+                            : existingCourseIds.has(course.courseId)
+                          
+                          // 선택 상태도 classId로 비교
+                          const isSelected = courseToAdd 
+                            ? (course.classId && courseToAdd.classId ? course.classId === courseToAdd.classId : course.courseId === courseToAdd.courseId)
+                            : false
+                          
+                          return (
+                          <div
+                              key={course.classId || course.courseId}
+                              className={`add-course-pill ${isSelected ? 'selected' : ''} ${isAdded ? 'added' : ''}`}
+                              onClick={() => {
+                                if (!isAdded) {
+                                  const shouldDeselect = courseToAdd && (
+                                    (course.classId && courseToAdd.classId && course.classId === courseToAdd.classId) ||
+                                    (!course.classId && !courseToAdd.classId && course.courseId === courseToAdd.courseId)
+                                  )
+                                  setCourseToAdd(shouldDeselect ? null : course)
+                                }
+                              }}
+                              style={{ cursor: isAdded ? 'default' : 'pointer' }}
                           >
                             <div className="course-pill-header">
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                {isAdded && (
+                                  <span style={{ color: '#4f46e5', fontSize: '1.2rem', lineHeight: 1, flexShrink: 0 }}>✓</span>
+                                )}
                               <span className="course-name">{course.name}</span>
+                              </div>
                               <div className="course-header-right">
                                 <span className="course-professor">{course.professor}</span>
-                                <span className="course-type-badge">{course.type}</span>
+                                  <span className="course-type-badge">{course.type}</span>
                               </div>
                             </div>
                             <div className="course-pill-info">
@@ -1175,8 +2166,44 @@ function Schedule() {
                                 )}
                               </div>
                             </div>
+                            {isSelected && !isAdded && (() => {
+                              const conflictingCourses = currentSavedSchedule 
+                                ? findConflictingCourses(currentSavedSchedule.courses, course)
+                                : []
+                              const hasConflict = conflictingCourses.length > 0
+                              
+                              return (
+                                <div style={{ borderTop: '1px solid var(--border-color)', width: '100%', marginLeft: 0, marginRight: 0 }}>
+                                  <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+                                    <button 
+                                      className="primary-btn" 
+                                      style={{ flex: 1, fontSize: '0.75rem', padding: '8px 12px', minWidth: 0 }}
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        if (currentSavedSchedule?.id) {
+                                          handleAddCourse(currentSavedSchedule.id, course, false, true)
+                                        }
+                                      }}
+                                    >
+                                      추가하기
                           </button>
-                        ))
+                                    <a
+                                      href="https://infodepot.korea.ac.kr/lecture1/lecsubjectPlanViewNew.jsp?year=2025&term=2R&grad_cd=0136&col_cd=9999&dept_cd=0233&cour_cd=NRSG172&cour_cls=00&cour_nm=&std_id=&device=WW"
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="ghost-btn"
+                                      style={{ flex: 1, fontSize: '0.75rem', padding: '8px 12px', textAlign: 'center', textDecoration: 'none', minWidth: 0 }}
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      강의계획서
+                                    </a>
+                                  </div>
+                                </div>
+                              )
+                            })()}
+                          </div>
+                          )
+                        })
                       )}
                     </div>
                   </div>
@@ -1378,17 +2405,27 @@ function Schedule() {
               </div>
             ) : (
               <div className="schedule-list">
-                {savedSchedules.map((schedule) => (
+                {[...savedSchedules]
+                  .filter(schedule => schedule.year === '2025-2')
+                  .sort((a, b) => {
+                    // isActive가 true인 항목이 맨 위에 오도록 정렬
+                    if (a.isActive && !b.isActive) return -1
+                    if (!a.isActive && b.isActive) return 1
+                    return 0
+                  }).map((schedule) => (
                   <div 
                     key={schedule.id} 
-                    className="schedule-list-item"
+                    className={`schedule-list-item ${schedule.isActive ? 'is-active' : ''}`}
                     onClick={() => setSelectedScheduleDetail(schedule)}
                   >
                     <div className="schedule-list-item-header">
             <div>
-                        <h3 className="schedule-list-item-title">{schedule.label}</h3>
+                        <h3 className="schedule-list-item-title">
+                          {schedule.label}
+                          {schedule.isActive && <span className="schedule-list-item-badge">대표</span>}
+                        </h3>
                         <p className="schedule-list-item-meta">
-                          {schedule.theme?.label} · {schedule.totalCredits}학점 · {schedule.courses.length}과목
+                          {schedule.totalCredits}학점 · {schedule.courses.length}과목
                         </p>
             </div>
                       <span className="schedule-list-item-arrow">›</span>
@@ -1412,7 +2449,9 @@ function Schedule() {
                   </button>
                   <div className="saved-card-title-row">
                     <h2>{selectedScheduleDetail.label}</h2>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
                     <span className="saved-card-credits">{selectedScheduleDetail.totalCredits}학점</span>
+                    </div>
                   </div>
                   <div className="schedule-detail-actions">
                     <div className="menu-container" ref={detailMenuRef}>
@@ -1424,6 +2463,16 @@ function Schedule() {
                       </button>
                       {isDetailMenuOpen && (
                         <div className="menu-dropdown">
+                          {!selectedScheduleDetail.isActive && (
+                            <button 
+                              className="menu-item"
+                              onClick={() => {
+                                handleSetAsActive(selectedScheduleDetail.id)
+                              }}
+                            >
+                              대표로 지정
+                            </button>
+                          )}
                           <button 
                             className="menu-item"
                             onClick={() => {
@@ -1504,8 +2553,18 @@ function Schedule() {
                     editable={isEditingDetail}
                     onSelectCourse={(courseId) => handleRemoveCourse(selectedScheduleDetail.id, courseId)}
                     onBlockClick={(course) => {
+                      if (isEditingDetail) {
+                        // 편집 모드일 때는 삭제를 위해 클릭된 과목 설정
+                        setClickedCourseForDelete(course)
+                      } else {
                       setSelectedCourse(course)
                       setIsCourseModalOpen(true)
+                      }
+                    }}
+                    clickedCourse={clickedCourseForDelete}
+                    onDeleteCourse={(courseId, classId) => {
+                      handleRemoveCourse(selectedScheduleDetail.id, courseId, classId)
+                      setClickedCourseForDelete(null)
                     }}
                   />
                 </div>
@@ -1532,27 +2591,35 @@ function Schedule() {
             </button>
                       </div>
                       <div className="edit-bottom-sheet-content">
-                        <p className="edit-hint">시간표 블록 또는 아래 버튼으로 과목을 삭제/추가할 수 있어요.</p>
                         <div className="add-course-grid">
                           {getAddableCourses(selectedScheduleDetail).length === 0 ? (
                             <span className="empty-state-hint">추가할 수 있는 과목이 없어요.</span>
                           ) : (
-                            getAddableCourses(selectedScheduleDetail).map((course) => (
-                              <button
-                                key={course.courseId}
-                                className={`add-course-pill ${courseToAdd?.courseId === course.courseId ? 'selected' : ''} ${course.isAdded ? 'added' : ''}`}
+                            getAddableCourses(selectedScheduleDetail).map((course) => {
+                              // 선택 상태도 classId로 비교
+                              const isSelected = courseToAdd 
+                                ? (course.classId && courseToAdd.classId ? course.classId === courseToAdd.classId : course.courseId === courseToAdd.courseId)
+                                : false
+                              
+                              return (
+                              <div
+                                  key={course.classId || course.courseId}
+                                  className={`add-course-pill ${isSelected ? 'selected' : ''} ${course.isAdded ? 'added' : ''}`}
                                 onClick={() => {
                                   if (!course.isAdded) {
-                                    setCourseToAdd(courseToAdd?.courseId === course.courseId ? null : course)
+                                      const shouldDeselect = courseToAdd && (
+                                        (course.classId && courseToAdd.classId && course.classId === courseToAdd.classId) ||
+                                        (!course.classId && !courseToAdd.classId && course.courseId === courseToAdd.courseId)
+                                      )
+                                      setCourseToAdd(shouldDeselect ? null : course)
                                   }
                                 }}
+                                style={{ cursor: course.isAdded ? 'default' : 'pointer' }}
                               >
                                 <div className="course-pill-header">
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    {course.isAdded ? (
-                                      <span style={{ color: '#4f46e5', fontSize: '1.2rem', lineHeight: 1 }}>✓</span>
-                                    ) : (
-                                      <span style={{ width: '1.2rem', height: '1.2rem' }}></span>
+                                    {course.isAdded && (
+                                        <span style={{ color: '#4f46e5', fontSize: '1.2rem', lineHeight: 1, flexShrink: 0 }}>✓</span>
                                     )}
                                     <span className="course-name">{course.name}</span>
                                   </div>
@@ -1585,15 +2652,22 @@ function Schedule() {
                                     )}
                                   </div>
                                 </div>
-                                {courseToAdd?.courseId === course.courseId && !course.isAdded && (
-                                  <div style={{ display: 'flex', gap: '6px', marginTop: '8px', width: '100%' }}>
+                                {isSelected && !course.isAdded && (() => {
+                                  const conflictingCourses = selectedScheduleDetail 
+                                    ? findConflictingCourses(selectedScheduleDetail.courses, course)
+                                    : []
+                                  const hasConflict = conflictingCourses.length > 0
+                                  
+                                  return (
+                                    <div style={{ borderTop: '1px solid var(--border-color)', width: '100%', marginLeft: 0, marginRight: 0 }}>
+                                      <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
                                     <button 
                                       className="primary-btn" 
-                                      style={{ flex: 1, fontSize: '0.75rem', padding: '6px 10px' }}
+                                          style={{ flex: 1, fontSize: '0.75rem', padding: '8px 12px', minWidth: 0 }}
                                       onClick={(e) => {
                                         e.stopPropagation()
                                         if (selectedScheduleDetail?.id) {
-                                          handleAddCourse(selectedScheduleDetail.id, course)
+                                              handleAddCourse(selectedScheduleDetail.id, course, false, true)
                                         }
                                       }}
                                     >
@@ -1604,15 +2678,18 @@ function Schedule() {
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       className="ghost-btn"
-                                      style={{ flex: 1, fontSize: '0.75rem', padding: '6px 10px', textAlign: 'center', textDecoration: 'none' }}
+                                          style={{ flex: 1, fontSize: '0.75rem', padding: '8px 12px', textAlign: 'center', textDecoration: 'none', minWidth: 0 }}
                                       onClick={(e) => e.stopPropagation()}
                                     >
                                       강의계획서
                                     </a>
                                   </div>
-                                )}
-                              </button>
-                            ))
+                                    </div>
+                                  )
+                                })()}
+                              </div>
+                            )
+                          })
                           )}
                         </div>
                       </div>
@@ -1658,13 +2735,13 @@ function Schedule() {
                     className="browse-carousel-track"
                     style={{ transform: `translateX(-${browseIndex * 100}%)` }}
                   >
-                    {browseSchedules.map((schedule) => (
+                    {browseSchedules.map((schedule, index) => (
                       <div key={schedule.id} className="browse-carousel-slide">
                         <div className="schedule-card saved-card browse-schedule-card-wrapper">
                           <div className="saved-card-top">
                             <div>
                               <div className="saved-card-title-row">
-                                <p className="saved-card-title">{schedule.label}</p>
+                                <p className="saved-card-title">학생 {index + 1}</p>
                                 <span className="saved-card-credits">{schedule.totalCredits}학점</span>
                               </div>
                             </div>
@@ -1813,39 +2890,55 @@ function Schedule() {
 
                   {isEditingSaved && (
                     <>
-                      <p className="edit-hint">시간표 블록 또는 아래 버튼으로 과목을 삭제/추가할 수 있어요.</p>
                       <div className="add-course-grid">
                         {savedAddableCoursesWithStatus.length === 0 ? (
                           <span className="empty-state-hint">추가할 수 있는 과목이 없어요.</span>
                         ) : (
-                          savedAddableCoursesWithStatus.map((course) => (
-                            <button
-                              key={course.courseId}
-                              className={`add-course-pill ${courseToAdd?.courseId === course.courseId ? 'selected' : ''} ${course.isAdded ? 'added' : ''}`}
+                          savedAddableCoursesWithStatus.map((course) => {
+                            // 선택 상태도 classId로 비교
+                            const isSelected = courseToAdd 
+                              ? (course.classId && courseToAdd.classId ? course.classId === courseToAdd.classId : course.courseId === courseToAdd.courseId)
+                              : false
+                            
+                            return (
+                            <div
+                                key={course.classId || course.courseId}
+                                className={`add-course-pill ${isSelected ? 'selected' : ''} ${course.isAdded ? 'added' : ''}`}
                               onClick={() => {
                                 if (!course.isAdded) {
-                                  setCourseToAdd(courseToAdd?.courseId === course.courseId ? null : course)
+                                    const shouldDeselect = courseToAdd && (
+                                      (course.classId && courseToAdd.classId && course.classId === courseToAdd.classId) ||
+                                      (!course.classId && !courseToAdd.classId && course.courseId === courseToAdd.courseId)
+                                    )
+                                    setCourseToAdd(shouldDeselect ? null : course)
                                 }
                               }}
+                              style={{ cursor: course.isAdded ? 'default' : 'pointer' }}
                             >
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
-                                {course.isAdded ? (
-                                  <span style={{ color: '#4f46e5', fontSize: '1.2rem', lineHeight: 1 }}>✓</span>
-                                ) : (
-                                  <span style={{ width: '1.2rem', height: '1.2rem' }}></span>
+                                {course.isAdded && (
+                                    <span style={{ color: '#4f46e5', fontSize: '1.2rem', lineHeight: 1, flexShrink: 0 }}>✓</span>
                                 )}
                                 <span>{course.name}</span>
                               </div>
                               <small>{course.schedule || '시간 협의'}</small>
-                              {courseToAdd?.courseId === course.courseId && !course.isAdded && (
-                                <div style={{ display: 'flex', gap: '6px', marginTop: '8px', width: '100%' }}>
+                              {isSelected && !course.isAdded && (() => {
+                                const conflictingCourses = currentSavedSchedule 
+                                  ? findConflictingCourses(currentSavedSchedule.courses, course)
+                                  : []
+                                const hasConflict = conflictingCourses.length > 0
+                                
+                                return (
+                                  <div style={{ borderTop: '1px solid var(--border-color)', width: '100%', marginLeft: 0, marginRight: 0 }}>
+                                    <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
                                   <button 
                                     className="primary-btn" 
-                                    style={{ flex: 1, fontSize: '0.75rem', padding: '6px 10px' }}
+                                        style={{ flex: 1, fontSize: '0.75rem', padding: '8px 12px', minWidth: 0 }}
                                     onClick={(e) => {
                                       e.stopPropagation()
                                       if (currentSavedSchedule?.id) {
                                         handleAddCourse(currentSavedSchedule.id, course)
+                                            setCourseToAdd(null)
                                       }
                                     }}
                                   >
@@ -1856,15 +2949,18 @@ function Schedule() {
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="ghost-btn"
-                                    style={{ flex: 1, fontSize: '0.75rem', padding: '6px 10px', textAlign: 'center', textDecoration: 'none' }}
+                                        style={{ flex: 1, fontSize: '0.75rem', padding: '8px 12px', textAlign: 'center', textDecoration: 'none', minWidth: 0 }}
                                     onClick={(e) => e.stopPropagation()}
                                   >
                                     강의계획서
                                   </a>
                                 </div>
-                              )}
-                            </button>
-                          ))
+                                  </div>
+                                )
+                              })()}
+                            </div>
+                          )
+                        })
                         )}
                       </div>
                     </>
@@ -1937,11 +3033,11 @@ function Schedule() {
           </div>
           <div className="course-modal-content">
             <p style={{ textAlign: 'center', marginBottom: '16px', color: '#4a5568' }}>
-              추가하려는 과목과 다음 과목의 시간이 겹칩니다:
+              {conflictInfo?.courseToAdd?.name}과(와) 다음 과목의 시간이 겹칩니다:
             </p>
             <div style={{ marginBottom: '20px', maxHeight: '200px', overflowY: 'auto' }}>
               {conflictInfo.conflictingCourses.map((course) => (
-                <div key={course.courseId} style={{ 
+                <div key={course.classId || course.courseId} style={{ 
                   padding: '12px', 
                   marginBottom: '8px', 
                   background: '#f7fafc', 
@@ -2059,6 +3155,88 @@ function Schedule() {
                 </div>
               )}
             </div>
+            {(() => {
+              // 저장된 시간표에서 해당 과목이 있는지 확인 (classId 우선)
+              const scheduleWithCourse = currentSavedSchedule?.courses.some(c => 
+                selectedCourse.classId 
+                  ? c.classId === selectedCourse.classId
+                  : c.courseId === selectedCourse.courseId && !c.classId
+              ) 
+                ? currentSavedSchedule 
+                : selectedScheduleDetail?.courses.some(c => 
+                    selectedCourse.classId 
+                      ? c.classId === selectedCourse.classId
+                      : c.courseId === selectedCourse.courseId && !c.classId
+                  )
+                ? selectedScheduleDetail
+                : null
+              
+              // 저장된 시간표에 과목이 있으면 삭제 버튼 표시
+              if (scheduleWithCourse) {
+                return (
+                  <div style={{ marginTop: '20px', display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                    <button 
+                      className="primary-btn" 
+                      style={{ 
+                        backgroundColor: '#e53e3e', 
+                        border: 'none',
+                        flex: 1
+                      }}
+                      onClick={() => {
+                        setCourseToDelete({
+                          scheduleId: scheduleWithCourse.id,
+                          courseId: selectedCourse.courseId,
+                          classId: selectedCourse.classId,
+                          courseName: selectedCourse.name
+                        })
+                        setIsCourseDeleteConfirmOpen(true)
+                      }}
+                    >
+                      삭제하기
+                    </button>
+                  </div>
+                )
+              }
+              return null
+            })()}
+          </div>
+        </div>
+      </div>
+    )}
+
+    {isCourseDeleteConfirmOpen && courseToDelete && (
+      <div className="course-modal-overlay" onClick={() => {
+        setIsCourseDeleteConfirmOpen(false)
+        setCourseToDelete(null)
+      }}>
+        <div className="course-modal save-confirm-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="course-modal-header">
+            <h3>과목 삭제</h3>
+          </div>
+          <div className="course-modal-content">
+            <p style={{ textAlign: 'center', marginBottom: '20px', color: '#4a5568' }}>
+              정말 <strong>{courseToDelete.courseName}</strong> 과목을 삭제하시겠어요?
+            </p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button className="ghost-btn" onClick={() => {
+                setIsCourseDeleteConfirmOpen(false)
+                setCourseToDelete(null)
+              }}>
+                취소
+              </button>
+              <button 
+                className="primary-btn" 
+                style={{ backgroundColor: '#e53e3e', border: 'none' }} 
+                onClick={() => {
+                  handleRemoveCourse(courseToDelete.scheduleId, courseToDelete.courseId, courseToDelete.classId)
+                  setIsCourseDeleteConfirmOpen(false)
+                  setCourseToDelete(null)
+                  setIsCourseModalOpen(false)
+                }}
+              >
+                삭제
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -2093,7 +3271,7 @@ function Schedule() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {filteredCourses.map((course) => (
                     <div
-                      key={course.courseId}
+                      key={course.classId || course.courseId}
                       style={{
                         padding: '16px',
                         border: '1px solid #e2e8f0',
@@ -2144,13 +3322,13 @@ function Schedule() {
         setNewScheduleName('')
       }}>
         <div className="course-modal save-confirm-modal" onClick={(e) => e.stopPropagation()}>
-          <div className="course-modal-header">
+          <div className="course-modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3>시간표 이름 변경</h3>
             <button className="course-modal-close" onClick={() => {
               setIsRenameModalOpen(false)
               setScheduleToRename(null)
               setNewScheduleName('')
-            }}>
+            }} style={{ marginLeft: 'auto' }}>
               ✕
             </button>
           </div>

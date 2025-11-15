@@ -1469,10 +1469,9 @@
   width: 100%;
   border-radius: 4px;
   border: 1px solid;
-  padding: 4px 6px;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 1px;
   text-align: left;
   justify-content: center;
   transition: opacity 0.2s ease, transform 0.2s ease;
@@ -1480,10 +1479,20 @@
   font-weight: 600;
   line-height: 1.1;
   box-sizing: border-box;
-  overflow: hidden;
+  overflow: visible;
   min-height: 36px;
   z-index: 3;
   cursor: pointer;
+}
+
+.timetable-block-content {
+  position: relative;
+  padding: 4px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  width: 100%;
+  height: 100%;
 }
 
 .timetable-block strong {
@@ -2326,7 +2335,7 @@
 .save-confirm-modal .course-modal-header {
   padding: 0 0 8px 0;
   border-bottom: none;
-  justify-content: center;
+  justify-content: space-between;
 }
 
 .save-confirm-modal .course-modal-header h3 {
@@ -2398,6 +2407,42 @@
   color: #cbd5e0;
   font-weight: 300;
   flex-shrink: 0;
+}
+
+.schedule-list-item.is-active {
+  background: white;
+  border: 2px solid #6366f1 !important;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.2);
+}
+
+.schedule-list-item.is-active .schedule-list-item-title {
+  color: #6366f1 !important;
+}
+
+.schedule-list-item.is-active .schedule-list-item-meta {
+  color: #4f46e5 !important;
+}
+
+.schedule-list-item.is-active .schedule-list-item-arrow {
+  color: #6366f1 !important;
+}
+
+.schedule-list-item.is-active:hover {
+  background: white;
+  border-color: #818cf8 !important;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.schedule-list-item-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  background: #6366f1;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 4px;
+  vertical-align: middle;
 }
 
 /* Schedule Detail Fullscreen */
@@ -3244,6 +3289,35 @@
 
 .dark .schedule-list-item-arrow {
   color: var(--text-tertiary);
+}
+
+.dark .schedule-list-item.is-active {
+  background: var(--bg-secondary);
+  border: 2px solid #818cf8 !important;
+  box-shadow: 0 2px 8px rgba(129, 140, 248, 0.3);
+}
+
+.dark .schedule-list-item.is-active:hover {
+  background: var(--bg-secondary);
+  border-color: #a5b4fc !important;
+  box-shadow: 0 4px 12px rgba(129, 140, 248, 0.4);
+}
+
+.dark .schedule-list-item.is-active .schedule-list-item-title {
+  color: #a5b4fc !important;
+}
+
+.dark .schedule-list-item.is-active .schedule-list-item-meta {
+  color: #c7d2fe !important;
+}
+
+.dark .schedule-list-item.is-active .schedule-list-item-arrow {
+  color: #a5b4fc !important;
+}
+
+.dark .schedule-list-item-badge {
+  background: #818cf8;
+  color: white;
 }
 
 /* 제작 탭 상세 화면 - 다크모드 스타일 */
