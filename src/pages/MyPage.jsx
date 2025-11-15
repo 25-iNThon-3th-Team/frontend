@@ -63,7 +63,7 @@ function MyPage() {
   const handleLogin = async () => {
     try {
       const response = await axios.post("/login", {
-        username: "admin",
+        userid: "admin",
         password: "admin123",
       });
       console.log("로그인 성공:", response.data);
