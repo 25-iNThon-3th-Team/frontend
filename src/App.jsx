@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { Routes, Route, useLocation } from 'react-router-dom'
 import BottomNav from './components/BottomNav'
 import Schedule from './pages/Schedule'
 import Mentor from './pages/Mentor'
@@ -6,6 +6,7 @@ import Career from './pages/Career'
 import MyPage from './pages/MyPage'
 import Chat from './pages/Chat'
 import ChatList from './pages/ChatList'
+import NotFound from './pages/NotFound'
 import './App.css'
 
 function App() {
@@ -22,7 +23,7 @@ function App() {
         <Route path="/career" element={<Career />} />
         <Route path="/mypage" element={<MyPage />} />
         <Route path="/chat/:seniorId" element={<Chat />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
       {!isChatPage && <BottomNav />}
     </div>
