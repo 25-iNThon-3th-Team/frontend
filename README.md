@@ -27,7 +27,7 @@
 | `Dashboard` | 학점·이수 현황 요약 | `completedCourses` |
 | `CareerRecommendation` | 트랙 추천 및 선택 | `tracks`, `selectedTrack` |
 | `Roadmap` | 학기별 로드맵, 다음 과목 추천 | `allCourses`, `selectedTrack`, `completedCourses` |
-| `Connections` | 선수/동시 수강자 매칭 | `studentConnections` |
+| `Connections` | 선수 수강자 매칭 | `studentConnections` |
 | `CoursePreferenceCard` | 시간표 제약 조건 입력 | `coursePreference` |
 
 ## 데이터 & 상태 관리
