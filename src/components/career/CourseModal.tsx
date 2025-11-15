@@ -37,78 +37,78 @@ function CourseModal({ course, isCompleted, isOpen, onClose, onAddToSchedule }: 
   const 동시수강자 = connections.filter(c => c.type === '동시수강자');
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black bg-opacity-50" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black bg-opacity-40" onClick={onClose}>
       <div 
-        className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl"
+        className="bg-white rounded-t-xl sm:rounded-xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between">
-          <h3 className="text-lg font-bold text-gray-800">{course.name}</h3>
+        <div className="sticky top-0 bg-white border-b border-gray-200 p-3.5 flex items-center justify-between z-10">
+          <h3 className="text-base font-semibold text-gray-900">{course.name}</h3>
           <button
             onClick={onClose}
-            className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+            className="p-1.5 rounded hover:bg-gray-100 transition-colors"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-4 space-y-4">
+        <div className="p-3.5 space-y-3">
           {/* Course Info */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">과목 코드</span>
-              <span className="font-medium">{course.courseId}</span>
+          <div className="space-y-2 border-b border-gray-100 pb-3">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-500">과목 코드</span>
+              <span className="font-medium text-gray-900">{course.courseId}</span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">학점</span>
-              <span className="font-medium">{course.credits}학점</span>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-500">학점</span>
+              <span className="font-medium text-gray-900">{course.credits}학점</span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">교수</span>
-              <span className="font-medium">{course.professor}</span>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-500">교수</span>
+              <span className="font-medium text-gray-900">{course.professor}</span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">시간</span>
-              <span className="font-medium">{course.schedule}</span>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-500">시간</span>
+              <span className="font-medium text-gray-900">{course.schedule}</span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">유형</span>
-              <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-sm">{course.type}</span>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-500">유형</span>
+              <span className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs border border-gray-200">{course.type}</span>
             </div>
           </div>
 
           {/* Difficulty & Workload */}
-          <div className="grid grid-cols-2 gap-4 pt-3 border-t border-gray-200">
+          <div className="grid grid-cols-2 gap-3 pt-2 border-t border-gray-100">
             <div>
-              <div className="text-sm text-gray-600 mb-2">난이도</div>
+              <div className="text-xs text-gray-500 mb-1.5">난이도</div>
               <div className="flex gap-1">
                 {[...Array(5)].map((_, i) => (
                   <div
                     key={i}
-                    className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                      i < course.difficulty ? 'bg-red-400' : 'bg-gray-200'
+                    className={`w-4 h-4 rounded flex items-center justify-center border ${
+                      i < course.difficulty ? 'bg-gray-700 border-gray-700' : 'bg-white border-gray-300'
                     }`}
                   >
-                    {i < course.difficulty && <span className="text-white text-xs">●</span>}
+                    {i < course.difficulty && <span className="text-white text-[8px]">●</span>}
                   </div>
                 ))}
               </div>
             </div>
             <div>
-              <div className="text-sm text-gray-600 mb-2">작업량</div>
+              <div className="text-xs text-gray-500 mb-1.5">작업량</div>
               <div className="flex gap-1">
                 {[...Array(5)].map((_, i) => (
                   <div
                     key={i}
-                    className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                      i < course.workload ? 'bg-blue-400' : 'bg-gray-200'
+                    className={`w-4 h-4 rounded flex items-center justify-center border ${
+                      i < course.workload ? 'bg-gray-700 border-gray-700' : 'bg-white border-gray-300'
                     }`}
                   >
-                    {i < course.workload && <span className="text-white text-xs">●</span>}
+                    {i < course.workload && <span className="text-white text-[8px]">●</span>}
                   </div>
                 ))}
               </div>
@@ -117,19 +117,19 @@ function CourseModal({ course, isCompleted, isOpen, onClose, onAddToSchedule }: 
 
           {/* Description */}
           {course.description && (
-            <div className="pt-3 border-t border-gray-200">
-              <div className="text-sm text-gray-600 mb-2">과목 설명</div>
-              <div className="text-sm text-gray-800">{course.description}</div>
+            <div className="pt-2 border-t border-gray-100">
+              <div className="text-xs text-gray-500 mb-1.5">과목 설명</div>
+              <div className="text-xs text-gray-700 leading-relaxed">{course.description}</div>
             </div>
           )}
 
           {/* Prerequisites */}
           {course.prerequisites.length > 0 && (
-            <div className="pt-3 border-t border-gray-200">
-              <div className="text-sm text-gray-600 mb-2">선수과목</div>
-              <div className="flex flex-wrap gap-2">
+            <div className="pt-2 border-t border-gray-100">
+              <div className="text-xs text-gray-500 mb-1.5">선수과목</div>
+              <div className="flex flex-wrap gap-1.5">
                 {course.prerequisites.map((prereqId) => (
-                  <span key={prereqId} className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm">
+                  <span key={prereqId} className="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded text-xs border border-indigo-200">
                     {prereqId}
                   </span>
                 ))}
@@ -139,37 +139,37 @@ function CourseModal({ course, isCompleted, isOpen, onClose, onAddToSchedule }: 
 
           {/* Status */}
           {isCompleted && (
-            <div className="pt-3 border-t border-gray-200">
-              <div className="flex items-center gap-2 text-green-600">
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+            <div className="pt-2 border-t border-gray-100">
+              <div className="flex items-center gap-1.5 text-gray-700">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                 </svg>
-                <span className="font-medium">이수 완료</span>
+                <span className="text-xs font-medium">이수 완료</span>
               </div>
             </div>
           )}
 
           {/* Connections */}
-          <div className="pt-3 border-t border-gray-200 space-y-4">
+          <div className="pt-2 border-t border-gray-100 space-y-3">
             {/* 선수강자 */}
             {선수강자.length > 0 && (
               <div>
-                <div className="text-sm font-semibold text-gray-700 mb-2">
-                  선수강자 ({선수강자.length})
+                <div className="text-xs font-medium text-gray-700 mb-2">
+                  선수강자 <span className="text-gray-500">({선수강자.length})</span>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   {선수강자.map((connection) => (
                     <div
                       key={connection.studentId}
-                      className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200"
+                      className="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg border border-gray-200"
                     >
                       <div>
-                        <div className="font-medium text-gray-800">{connection.name}</div>
+                        <div className="font-medium text-sm text-gray-900">{connection.name}</div>
                         {connection.semester && (
-                          <div className="text-xs text-gray-600 mt-1">{connection.semester} 수강</div>
+                          <div className="text-xs text-gray-500 mt-0.5">{connection.semester} 수강</div>
                         )}
                       </div>
-                      <button className="px-4 py-2 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 transition-colors">
+                      <button className="px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-blue-600 text-white text-xs rounded hover:from-indigo-700 hover:to-blue-700 transition-all">
                         질문하기
                       </button>
                     </div>
@@ -181,22 +181,22 @@ function CourseModal({ course, isCompleted, isOpen, onClose, onAddToSchedule }: 
             {/* 동시수강자 */}
             {동시수강자.length > 0 && (
               <div>
-                <div className="text-sm font-semibold text-gray-700 mb-2">
-                  동시수강자 ({동시수강자.length})
+                <div className="text-xs font-medium text-gray-700 mb-2">
+                  동시수강자 <span className="text-gray-500">({동시수강자.length})</span>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   {동시수강자.map((connection) => (
                     <div
                       key={connection.studentId}
-                      className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200"
+                      className="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg border border-gray-200"
                     >
                       <div>
-                        <div className="font-medium text-gray-800">{connection.name}</div>
+                        <div className="font-medium text-sm text-gray-900">{connection.name}</div>
                         {connection.semester && (
-                          <div className="text-xs text-gray-600 mt-1">{connection.semester} 수강</div>
+                          <div className="text-xs text-gray-500 mt-0.5">{connection.semester} 수강</div>
                         )}
                       </div>
-                      <button className="px-4 py-2 bg-green-500 text-white text-sm rounded-lg hover:bg-green-600 transition-colors">
+                      <button className="px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-blue-600 text-white text-xs rounded hover:from-indigo-700 hover:to-blue-700 transition-all">
                         메시지
                       </button>
                     </div>
@@ -206,25 +206,25 @@ function CourseModal({ course, isCompleted, isOpen, onClose, onAddToSchedule }: 
             )}
 
             {!loading && connections.length === 0 && (
-              <div className="text-center py-4 text-gray-500 text-sm">
+              <div className="text-center py-3 text-gray-400 text-xs">
                 연결된 학생이 없습니다
               </div>
             )}
 
             {loading && (
-              <div className="text-center py-4 text-gray-500 text-sm">로딩 중...</div>
+              <div className="text-center py-3 text-gray-400 text-xs">로딩 중...</div>
             )}
           </div>
 
           {/* Actions */}
           {!isCompleted && (
-            <div className="pt-3 border-t border-gray-200">
+            <div className="pt-2 border-t border-gray-100">
               <button
                 onClick={() => {
                   onAddToSchedule(course.courseId);
                   onClose();
                 }}
-                className="w-full px-4 py-3 bg-purple-500 text-white font-medium rounded-lg hover:bg-purple-600 transition-colors"
+                className="w-full px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 text-white font-medium text-sm rounded-lg hover:from-indigo-700 hover:to-blue-700 transition-all shadow-md"
               >
                 시간표에 추가
               </button>
