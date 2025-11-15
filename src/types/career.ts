@@ -23,6 +23,10 @@ export interface Course {
   description?: string;
   reviews?: CourseReview[];
   semester?: number; // 1-8
+  location?: string; // 수업 장소
+  grade?: number; // 학년 (1-4)
+  enrollment?: number; // 담은 수
+  capacity?: number; // 정원
 }
 
 export interface CourseReview {
