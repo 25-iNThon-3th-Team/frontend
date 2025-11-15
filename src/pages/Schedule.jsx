@@ -7,7 +7,7 @@ const LOCAL_STORAGE_KEY = 'inthon-saved-schedules'
 const AI_THEMES = [
   {
     id: 'ai-depth',
-    label: 'AI 심화',
+    label: '심화',
     description: '머신러닝·딥러닝 중심 구성',
     accent: '#6b5bff'
   },
@@ -193,7 +193,7 @@ const mergeCoursesForTheme = (theme, courses) => {
 const describeTheme = (themeId) => {
   switch (themeId) {
     case 'ai-depth':
-      return 'AI 심화 필수 과목을 우선 배치했어요.'
+      return '심화 필수 과목을 우선 배치했어요.'
     case 'backend':
       return '백엔드 역량을 넓힐 수 있도록 서버·네트워크 과목을 중심으로 구성했어요.'
     case 'data':
@@ -203,7 +203,7 @@ const describeTheme = (themeId) => {
     case 'light':
       return '난이도는 낮추고, 학점은 필요한 만큼만 채운 플랜이에요.'
     default:
-      return 'AI가 학습 패턴을 분석해 최적의 조합을 제안했어요.'
+      return '학습 패턴을 분석해 최적의 조합을 제안했어요.'
   }
 }
 
@@ -268,7 +268,7 @@ const buildBlocksForCourses = (courses = [], rangeStart) => {
 const buildAiChatReply = (message = '', scheduleContext, savedCount = 0) => {
   const normalized = message.replace(/\s/g, '')
   if (!scheduleContext && savedCount === 0) {
-    return '먼저 상단의 "AI 다시 생성" 버튼을 눌러 추천 시간표를 받아보세요. 마음에 드는 조합은 저장 후 아래 캐러셀에서 확인할 수 있어요.'
+    return '먼저 상단의 "다시 생성" 버튼을 눌러 추천 시간표를 받아보세요. 마음에 드는 조합은 저장 후 아래 캐러셀에서 확인할 수 있어요.'
   }
 
   if (scheduleContext) {
@@ -289,11 +289,11 @@ const buildAiChatReply = (message = '', scheduleContext, savedCount = 0) => {
   }
 
   if (normalized.includes('가볍') || normalized.includes('쉬운') || normalized.includes('light')) {
-    return '부담을 줄이고 싶다면 AI 추천을 다시 생성한 뒤 "부담 완화 플랜" 테마를 골라보세요. 필요하면 저장 후 직접 과목을 더 삭제해도 좋아요.'
+    return '부담을 줄이고 싶다면 추천을 다시 생성한 뒤 "부담 완화 플랜" 테마를 골라보세요. 필요하면 저장 후 직접 과목을 더 삭제해도 좋아요.'
   }
 
   if (normalized.includes('새로') || normalized.includes('다시')) {
-    return '상단의 "AI 다시 생성" 버튼을 누르면 최신 조건으로 10개의 시간표를 다시 계산해 드릴게요.'
+    return '상단의 "다시 생성" 버튼을 누르면 최신 조건으로 10개의 시간표를 다시 계산해 드릴게요.'
   }
 
   return '요청 내용을 기록했어요. 원하는 요일이나 시간대를 구체적으로 말해주시면 그에 맞춰 추천 또는 편집 방법을 안내해 드릴게요.'
@@ -464,7 +464,7 @@ function Schedule() {
 
       proposals.push({
         id: `ai-${Date.now()}-${attempt}`,
-        label: `AI 추천 ${proposals.length + 1}`,
+        label: `추천 ${proposals.length + 1}`,
         theme,
         courses: selected,
         signature,
@@ -479,7 +479,7 @@ function Schedule() {
 
   const generateWithAi = useCallback(() => {
     setIsGenerating(true)
-    setFeedback({ type: 'info', text: 'AI가 10개의 시간표를 계산하고 있어요.' })
+    setFeedback({ type: 'info', text: '10개의 시간표를 계산하고 있어요.' })
     const generated = buildAiSchedules()
     setAiSchedules(generated)
     setCurrentIndex(0)
@@ -608,9 +608,9 @@ function Schedule() {
       <div className="page-container">
       <div className="page-content">
         <section className="schedule-hero">
-          <h1 className="page-title">📅 AI 시간표 스튜디오</h1>
+          <h1 className="page-title">시간표 스튜디오</h1>
           <p className="page-text">
-            AI가 학업 이력과 과목 특성을 분석해 10개의 시간표를 제안해드려요. 좌우 화살표로 비교하고, 마음에 드는
+            학업 이력과 과목 특성을 분석해 10개의 시간표를 제안해드려요. 좌우 화살표로 비교하고, 마음에 드는
             조합은 바로 저장해 주세요.
           </p>
           {lastGeneratedAt && (
@@ -689,7 +689,7 @@ function Schedule() {
           </div>
         ) : (
           <div className="page-card empty-state">
-            <p className="page-text">AI 시간표를 불러오는 중이에요. 잠시만 기다려 주세요.</p>
+            <p className="page-text">시간표를 불러오는 중이에요. 잠시만 기다려 주세요.</p>
           </div>
         )}
 
@@ -702,7 +702,7 @@ function Schedule() {
         <section className="ai-chat-section">
           <div className="ai-chat-header">
             <div>
-              <h2 className="saved-title">AI와 대화로 조건 전달</h2>
+              <h2 className="saved-title">대화로 조건 전달</h2>
               <p className="saved-description">시간·학점·전필 조건을 말하면 맞춤 가이드를 드려요.</p>
             </div>
           </div>
