@@ -2785,47 +2785,53 @@
 }
 
 .home-title {
-  font-size: 2rem;
+  font-size: 2.5rem;
   font-weight: 700;
   color: #1a202c;
-  margin: 16px 0 0 0;
-  text-align: center;
+  margin: 0;
 }
 
 .home-auth {
-  margin-top: 0;
+  max-width: 400px;
+  margin: 0 auto;
 }
 
 .home-auth-tabs {
   display: flex;
   gap: 8px;
   margin-bottom: 24px;
-  background: #f3f4f6;
-  padding: 4px;
-  border-radius: 12px;
+  border-bottom: 2px solid #e2e8f0;
 }
 
 .home-auth-tab {
   flex: 1;
-  padding: 12px;
+  padding: 12px 16px;
+  background: none;
   border: none;
-  background: transparent;
-  color: #6b7280;
-  font-size: 0.95rem;
-  font-weight: 600;
-  border-radius: 8px;
+  border-bottom: 2px solid transparent;
+  color: #718096;
+  font-size: 1rem;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s;
+  margin-bottom: -2px;
+}
+
+.home-auth-tab:hover {
+  color: #4a5568;
 }
 
 .home-auth-tab.active {
-  background: white;
-  color: #4f46e5;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  color: #3182ce;
+  border-bottom-color: #3182ce;
+  font-weight: 600;
 }
 
 .home-auth-form {
-  margin-top: 0;
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .home-form-group {
@@ -2834,32 +2840,37 @@
 
 .home-form-group label {
   display: block;
+  margin-bottom: 8px;
   font-size: 0.9rem;
   font-weight: 600;
-  color: #374151;
-  margin-bottom: 8px;
+  color: #2d3748;
 }
 
 .home-form-group input {
   width: 100%;
   padding: 12px 16px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
-  font-size: 0.95rem;
-  transition: border-color 0.2s ease;
+  font-size: 1rem;
+  transition: border-color 0.2s;
   box-sizing: border-box;
-  background: white;
 }
 
 .home-form-group input:focus {
   outline: none;
-  border-color: #4f46e5;
+  border-color: #3182ce;
+  box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
+}
+
+.home-form-group input:disabled {
+  background-color: #f7fafc;
+  cursor: not-allowed;
 }
 
 .home-auth-button {
   width: 100%;
   padding: 14px;
-  background: #4f46e5;
+  background: #3182ce;
   color: white;
   border: none;
   border-radius: 8px;
@@ -2871,11 +2882,11 @@
 }
 
 .home-auth-button:hover {
-  background: #4338ca;
+  background: #2c5aa0;
 }
 
 .home-auth-button:active {
-  background: #3730a3;
+  background: #2563eb;
 }
 
 /* Dark Mode Styles */
@@ -3579,4 +3590,24 @@
 
 .dark .page-content [class*="text-gray-900"] {
   color: var(--text-primary) !important; /* 밝은 텍스트 */
+}
+
+.home-auth-button:hover:not(:disabled) {
+  background: #2c5aa0;
+}
+
+.home-auth-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.home-error-message {
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  color: #991b1b;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  margin-bottom: 20px;
+  text-align: center;
 }

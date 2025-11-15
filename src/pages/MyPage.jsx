@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "../api/axios";
+import useAuthStore from "../store/authStore";
 import "../App.css";
 import Stats from "../components/mypage/Stats";
 import ProfileCard from "../components/mypage/ProfileCard";
@@ -36,7 +37,7 @@ function MyPage() {
   const handleSave = async () => {
     try {
       const response = await axios.put("/api/users/me", {
-        username: profile.name || "",
+        name: profile.name || "", // 사용자 이름 (표시 이름)
         grade: profile.grade || 0,
         semester: profile.semester || 0,
         majorCode: profile.major || "",
@@ -85,7 +86,8 @@ function MyPage() {
       } catch (error) {
         console.error("로그아웃 에러:", error);
       } finally {
-        localStorage.removeItem("token");
+        const { logout } = useAuthStore.getState();
+        logout();
         sessionStorage.clear();
         navigate("/");
         alert("로그아웃되었습니다.");
@@ -97,7 +99,7 @@ function MyPage() {
     try {
       // Assuming a similar API endpoint for preferences
       const response = await axios.put("/api/users/me", {
-        username: profile.name || "",
+        name: profile.name || "", // 사용자 이름 (표시 이름)
         grade: profile.grade || 0,
         semester: profile.semester || 0,
         majorCode: profile.major || "",
@@ -138,7 +140,7 @@ function MyPage() {
 
         setProfile((prevProfile) => ({
           ...prevProfile,
-          name: userData.username || prevProfile.name,
+          name: userData.name || userData.username || prevProfile.name, // name 또는 username 필드에서 사용자 이름 가져오기
           email: userData.email || prevProfile.email,
           studentId: userData.studentId || prevProfile.studentId,
           major: userData.majorCode || prevProfile.major,

@@ -2,6 +2,7 @@ import { Routes, Route, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import useAuthStore from "./store/authStore";
 import BottomNav from "./components/BottomNav";
+import Home from "./pages/Home";
 import Schedule from "./pages/Schedule";
 import Mentor from "./pages/Mentor";
 import Career from "./pages/Career";
@@ -25,7 +26,7 @@ import "./App.css";
 
 function App() {
   const location = useLocation();
-  const { checkLogin } = useAuthStore();
+  const { checkLogin, isLoggedIn } = useAuthStore();
   const { initTheme } = useThemeStore();
 
   useEffect(() => {
@@ -40,6 +41,20 @@ function App() {
   const isChatPage =
     location.pathname.startsWith("/chat/") &&
     !location.pathname.startsWith("/chatlist");
+
+  // 로그인하지 않았으면 홈 페이지만 보여줌
+  if (!isLoggedIn) {
+    return (
+      <div className="App">
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="*" element={<Home />} />
+        </Routes>
+      </div>
+    );
+  }
+
+  // 로그인했으면 기존 앱 라우팅
   return (
     <div className="App">
       <Routes>
