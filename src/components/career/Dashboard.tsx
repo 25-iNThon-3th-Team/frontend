@@ -37,26 +37,6 @@ function Dashboard() {
           </div>
         </div>
 
-        {/* Completed Courses List */}
-        {completedCourses.length > 0 && (
-          <div className="mt-3 pt-3 border-t border-gray-100">
-            <div className="text-xs font-medium text-gray-700 mb-2">이수한 과목</div>
-            <div className="space-y-1.5 max-h-28 overflow-y-auto">
-              {completedCourses.map((course) => (
-                <div key={course.courseId} className="flex justify-between items-center bg-gray-50 rounded px-2.5 py-1.5 text-xs border border-gray-100">
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-medium text-gray-900">{course.courseName}</span>
-                    <span className="text-gray-400 text-[10px]">({course.type})</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-gray-700 font-medium">{course.grade}</span>
-                    <span className="text-gray-400">{course.credits}학점</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
