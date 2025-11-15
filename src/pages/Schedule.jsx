@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import '../App.css'
 import { mockCourses } from '../data/mockData'
+import axios from '../api/axios'
+import { convertClassToCourse } from '../api/classesApi'
 
 const LOCAL_STORAGE_KEY = 'inthon-saved-schedules'
 
@@ -488,6 +490,14 @@ function Schedule() {
   const [isRenameModalOpen, setIsRenameModalOpen] = useState(false) // 이름 변경 모달
   const [scheduleToRename, setScheduleToRename] = useState(null) // 이름 변경할 시간표
   const [newScheduleName, setNewScheduleName] = useState('') // 새 시간표 이름
+  const [apiCourses, setApiCourses] = useState([]) // API에서 가져온 과목 목록 (과목 추가하기용)
+  const [isLoadingApiCourses, setIsLoadingApiCourses] = useState(false) // API 로딩 상태
+  const [courseFilter, setCourseFilter] = useState({
+    searchText: '', // 검색어
+    type: '', // 이수구분: '전필', '전선', '교양', ''
+    credits: '', // 학점: '', '1', '2', '3', '4'
+    timeSlot: '', // 시간대: '', '오전', '오후', '저녁'
+  })
 
   const currentSchedule = aiSchedules[currentIndex]
   const currentSavedSchedule = savedSchedules[savedIndex]
@@ -554,6 +564,43 @@ function Schedule() {
       setIsSavedPanelOpen(false)
     }
   }, [savedSchedules])
+
+  // API에서 과목 목록 가져오기 (과목 추가하기 기능용)
+  useEffect(() => {
+    let isMounted = true
+    
+    const fetchApiCourses = async () => {
+      try {
+        setIsLoadingApiCourses(true)
+        // MyPage.jsx와 동일한 방식으로 API 호출 (baseURL이 /api이므로 /classes만 사용)
+        const response = await axios.get('/classes')
+        
+        if (!isMounted) return
+        
+        // API 응답을 기존 형식으로 변환
+        const convertedCourses = response.data.map((classData) => convertClassToCourse(classData))
+        console.log('✅ API에서 과목 목록을 성공적으로 가져왔습니다:', convertedCourses.length, '개')
+        console.log('API 응답 원본 데이터:', response.data)
+        setApiCourses(convertedCourses.map((course) => enrichCourse(course)))
+      } catch (error) {
+        if (!isMounted) return
+        
+        // API 실패 시 mockCourses 사용 (서버 문제로 인한 500 에러 등)
+        // 에러는 axios 인터셉터에서 이미 로깅되므로 여기서는 조용히 fallback
+        setApiCourses(mockCourses.map((course) => enrichCourse(course)))
+      } finally {
+        if (isMounted) {
+          setIsLoadingApiCourses(false)
+        }
+      }
+    }
+    
+    fetchApiCourses()
+    
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -875,12 +922,58 @@ function Schedule() {
 
   const getAddableCourses = (schedule) => {
     const existingIds = new Set(schedule.courses.map((course) => course.courseId))
-    return availableCourses
+    // API에서 가져온 과목 목록 사용 (과목 추가하기 기능용)
+    const coursesToUse = apiCourses.length > 0 ? apiCourses : availableCourses
+    
+    // 필터링 적용
+    let filtered = coursesToUse.filter((course) => {
+      // 검색어 필터
+      if (courseFilter.searchText) {
+        const searchLower = courseFilter.searchText.toLowerCase()
+        if (!course.name.toLowerCase().includes(searchLower) && 
+            !course.courseId.toLowerCase().includes(searchLower) &&
+            !course.professor?.toLowerCase().includes(searchLower)) {
+          return false
+        }
+      }
+      
+      // 이수구분 필터
+      if (courseFilter.type && course.type !== courseFilter.type) {
+        return false
+      }
+      
+      // 학점 필터
+      if (courseFilter.credits && course.credits?.toString() !== courseFilter.credits) {
+        return false
+      }
+      
+      // 시간대 필터
+      if (courseFilter.timeSlot) {
+        const scheduleStr = course.schedule || ''
+        if (courseFilter.timeSlot === '오전') {
+          if (!scheduleStr.includes('09:') && !scheduleStr.includes('10:') && !scheduleStr.includes('11:')) {
+            return false
+          }
+        } else if (courseFilter.timeSlot === '오후') {
+          if (!scheduleStr.includes('12:') && !scheduleStr.includes('13:') && !scheduleStr.includes('14:') && 
+              !scheduleStr.includes('15:') && !scheduleStr.includes('16:') && !scheduleStr.includes('17:')) {
+            return false
+          }
+        } else if (courseFilter.timeSlot === '저녁') {
+          if (!scheduleStr.includes('18:') && !scheduleStr.includes('19:') && !scheduleStr.includes('20:')) {
+            return false
+          }
+        }
+      }
+      
+      return true
+    })
+    
+    return filtered
       .map((course) => ({
         ...course,
         isAdded: existingIds.has(course.courseId)
       }))
-      .slice(0, 12)
   }
 
   const handleSavedNavigation = (direction) => {
@@ -923,12 +1016,58 @@ function Schedule() {
   const getSavedAddableCoursesWithStatus = () => {
     if (!isEditingSaved || !currentSavedSchedule) return []
     const existingIds = new Set(currentSavedSchedule.courses.map((course) => course.courseId))
-    return availableCourses
+    // API에서 가져온 과목 목록 사용 (과목 추가하기 기능용)
+    const coursesToUse = apiCourses.length > 0 ? apiCourses : availableCourses
+    
+    // 필터링 적용 (getAddableCourses와 동일한 로직)
+    let filtered = coursesToUse.filter((course) => {
+      // 검색어 필터
+      if (courseFilter.searchText) {
+        const searchLower = courseFilter.searchText.toLowerCase()
+        if (!course.name.toLowerCase().includes(searchLower) && 
+            !course.courseId.toLowerCase().includes(searchLower) &&
+            !course.professor?.toLowerCase().includes(searchLower)) {
+          return false
+        }
+      }
+      
+      // 이수구분 필터
+      if (courseFilter.type && course.type !== courseFilter.type) {
+        return false
+      }
+      
+      // 학점 필터
+      if (courseFilter.credits && course.credits?.toString() !== courseFilter.credits) {
+        return false
+      }
+      
+      // 시간대 필터
+      if (courseFilter.timeSlot) {
+        const scheduleStr = course.schedule || ''
+        if (courseFilter.timeSlot === '오전') {
+          if (!scheduleStr.includes('09:') && !scheduleStr.includes('10:') && !scheduleStr.includes('11:')) {
+            return false
+          }
+        } else if (courseFilter.timeSlot === '오후') {
+          if (!scheduleStr.includes('12:') && !scheduleStr.includes('13:') && !scheduleStr.includes('14:') && 
+              !scheduleStr.includes('15:') && !scheduleStr.includes('16:') && !scheduleStr.includes('17:')) {
+            return false
+          }
+        } else if (courseFilter.timeSlot === '저녁') {
+          if (!scheduleStr.includes('18:') && !scheduleStr.includes('19:') && !scheduleStr.includes('20:')) {
+            return false
+          }
+        }
+      }
+      
+      return true
+    })
+    
+    return filtered
       .map((course) => ({
         ...course,
         isAdded: existingIds.has(course.courseId)
       }))
-      .slice(0, 12)
   }
   
   const savedAddableCoursesWithStatus = getSavedAddableCoursesWithStatus()
@@ -1051,7 +1190,7 @@ function Schedule() {
                                 toggleEditSchedule(currentSavedSchedule.id)
                               }}
                             >
-                              시간표 수정하기
+                              수정하기
                             </button>
                           </div>
                         )}
@@ -1134,6 +1273,116 @@ function Schedule() {
                   </div>
                   <div className="edit-bottom-sheet-content">
                     <p className="edit-hint">시간표 블록 또는 아래 버튼으로 과목을 삭제/추가할 수 있어요.</p>
+                    
+                    {/* 필터 UI */}
+                    <div style={{ 
+                      marginBottom: '16px', 
+                      padding: '12px', 
+                      backgroundColor: '#f7fafc', 
+                      borderRadius: '8px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '12px'
+                    }}>
+                      {/* 검색어 */}
+                      <input
+                        type="text"
+                        placeholder="과목명, 과목코드, 교수명 검색"
+                        value={courseFilter.searchText}
+                        onChange={(e) => setCourseFilter({ ...courseFilter, searchText: e.target.value })}
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '6px',
+                          fontSize: '0.9rem'
+                        }}
+                      />
+                      
+                      {/* 필터 버튼들 */}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                        {/* 이수구분 */}
+                        <select
+                          value={courseFilter.type}
+                          onChange={(e) => setCourseFilter({ ...courseFilter, type: e.target.value })}
+                          style={{
+                            padding: '6px 10px',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '6px',
+                            fontSize: '0.85rem',
+                            backgroundColor: 'white'
+                          }}
+                        >
+                          <option value="">이수구분 전체</option>
+                          <option value="전필">전공필수</option>
+                          <option value="전선">전공선택</option>
+                          <option value="교양">교양</option>
+                            </select>
+                            
+                            {/* 학점 */}
+                        <select
+                          value={courseFilter.credits}
+                          onChange={(e) => setCourseFilter({ ...courseFilter, credits: e.target.value })}
+                          style={{
+                            padding: '6px 10px',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '6px',
+                            fontSize: '0.85rem',
+                            backgroundColor: 'white'
+                          }}
+                        >
+                          <option value="">학점 전체</option>
+                          <option value="1">1학점</option>
+                          <option value="2">2학점</option>
+                          <option value="3">3학점</option>
+                          <option value="4">4학점</option>
+                        </select>
+                        
+                        {/* 시간대 */}
+                        <select
+                          value={courseFilter.timeSlot}
+                          onChange={(e) => setCourseFilter({ ...courseFilter, timeSlot: e.target.value })}
+                          style={{
+                            padding: '6px 10px',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '6px',
+                            fontSize: '0.85rem',
+                            backgroundColor: 'white'
+                          }}
+                        >
+                          <option value="">시간대 전체</option>
+                          <option value="오전">오전</option>
+                          <option value="오후">오후</option>
+                          <option value="저녁">저녁</option>
+                        </select>
+                        
+                        {/* 필터 초기화 */}
+                        {(courseFilter.searchText || courseFilter.type || 
+                          courseFilter.credits || courseFilter.timeSlot) && (
+                          <button
+                            onClick={() => setCourseFilter({
+                              searchText: '',
+                              type: '',
+                              grade: '',
+                              credits: '',
+                              timeSlot: ''
+                            })}
+                            style={{
+                              padding: '6px 12px',
+                              border: '1px solid #e2e8f0',
+                              borderRadius: '6px',
+                              fontSize: '0.85rem',
+                              backgroundColor: 'white',
+                              cursor: 'pointer',
+                              color: '#64748b'
+                            }}
+                          >
+                            초기화
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    
                     <div className="add-course-grid">
                       {savedAddableCourses.length === 0 ? (
                         <span className="empty-state-hint">추가할 수 있는 과목이 없어요.</span>
@@ -1148,7 +1397,9 @@ function Schedule() {
                               <span className="course-name">{course.name}</span>
                               <div className="course-header-right">
                                 <span className="course-professor">{course.professor}</span>
-                                <span className="course-type-badge">{course.type}</span>
+                                <span className="course-type-badge">
+                                  {course.type === '전필' ? '전공필수' : course.type === '전선' ? '전공선택' : course.type}
+                                </span>
                               </div>
                             </div>
                             <div className="course-pill-info">
@@ -1533,6 +1784,115 @@ function Schedule() {
                       </div>
                       <div className="edit-bottom-sheet-content">
                         <p className="edit-hint">시간표 블록 또는 아래 버튼으로 과목을 삭제/추가할 수 있어요.</p>
+                        
+                        {/* 필터 UI */}
+                        <div style={{ 
+                          marginBottom: '16px', 
+                          padding: '12px', 
+                          backgroundColor: '#f7fafc', 
+                          borderRadius: '8px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '12px'
+                        }}>
+                          {/* 검색어 */}
+                          <input
+                            type="text"
+                            placeholder="과목명, 과목코드, 교수명 검색"
+                            value={courseFilter.searchText}
+                            onChange={(e) => setCourseFilter({ ...courseFilter, searchText: e.target.value })}
+                            style={{
+                              width: '100%',
+                              padding: '8px 12px',
+                              border: '1px solid #e2e8f0',
+                              borderRadius: '6px',
+                              fontSize: '0.9rem'
+                            }}
+                          />
+                          
+                          {/* 필터 버튼들 */}
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                            {/* 이수구분 */}
+                            <select
+                              value={courseFilter.type}
+                              onChange={(e) => setCourseFilter({ ...courseFilter, type: e.target.value })}
+                              style={{
+                                padding: '6px 10px',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '6px',
+                                fontSize: '0.85rem',
+                                backgroundColor: 'white'
+                              }}
+                            >
+                              <option value="">이수구분 전체</option>
+                              <option value="전필">전공필수</option>
+                              <option value="전선">전공선택</option>
+                              <option value="교양">교양</option>
+                            </select>
+                            
+                            {/* 학점 */}
+                            <select
+                              value={courseFilter.credits}
+                              onChange={(e) => setCourseFilter({ ...courseFilter, credits: e.target.value })}
+                              style={{
+                                padding: '6px 10px',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '6px',
+                                fontSize: '0.85rem',
+                                backgroundColor: 'white'
+                              }}
+                            >
+                              <option value="">학점 전체</option>
+                              <option value="1">1학점</option>
+                              <option value="2">2학점</option>
+                              <option value="3">3학점</option>
+                              <option value="4">4학점</option>
+                            </select>
+                            
+                            {/* 시간대 */}
+                            <select
+                              value={courseFilter.timeSlot}
+                              onChange={(e) => setCourseFilter({ ...courseFilter, timeSlot: e.target.value })}
+                              style={{
+                                padding: '6px 10px',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '6px',
+                                fontSize: '0.85rem',
+                                backgroundColor: 'white'
+                              }}
+                            >
+                              <option value="">시간대 전체</option>
+                              <option value="오전">오전</option>
+                              <option value="오후">오후</option>
+                              <option value="저녁">저녁</option>
+                            </select>
+                            
+                            {/* 필터 초기화 */}
+                            {(courseFilter.searchText || courseFilter.type || 
+                              courseFilter.credits || courseFilter.timeSlot) && (
+                              <button
+                                onClick={() => setCourseFilter({
+                                  searchText: '',
+                                  type: '',
+                                  credits: '',
+                                  timeSlot: ''
+                                })}
+                                style={{
+                                  padding: '6px 12px',
+                                  border: '1px solid #e2e8f0',
+                                  borderRadius: '6px',
+                                  fontSize: '0.85rem',
+                                  backgroundColor: 'white',
+                                  cursor: 'pointer',
+                                  color: '#64748b'
+                                }}
+                              >
+                                초기화
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        
                         <div className="add-course-grid">
                           {getAddableCourses(selectedScheduleDetail).length === 0 ? (
                             <span className="empty-state-hint">추가할 수 있는 과목이 없어요.</span>
@@ -1550,15 +1910,19 @@ function Schedule() {
                                 <div className="course-pill-header">
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     {course.isAdded ? (
-                                      <span style={{ color: '#4f46e5', fontSize: '1.2rem', lineHeight: 1 }}>✓</span>
+                                      <>
+                                        <span style={{ color: '#4f46e5', fontSize: '1.2rem', lineHeight: 1 }}>✓</span>
+                                        <span className="course-name">{course.name}</span>
+                                      </>
                                     ) : (
-                                      <span style={{ width: '1.2rem', height: '1.2rem' }}></span>
+                                      <span className="course-name" style={{ marginLeft: 0 }}>{course.name}</span>
                                     )}
-                                    <span className="course-name">{course.name}</span>
                                   </div>
                                   <div className="course-header-right">
                                     <span className="course-professor">{course.professor}</span>
-                                    <span className="course-type-badge">{course.type}</span>
+                                    <span className="course-type-badge">
+                                      {course.type === '전필' ? '전공필수' : course.type === '전선' ? '전공선택' : course.type}
+                                    </span>
                                   </div>
                                 </div>
                                 <div className="course-pill-info">
@@ -1814,6 +2178,115 @@ function Schedule() {
                   {isEditingSaved && (
                     <>
                       <p className="edit-hint">시간표 블록 또는 아래 버튼으로 과목을 삭제/추가할 수 있어요.</p>
+                      
+                      {/* 필터 UI */}
+                      <div style={{ 
+                        marginBottom: '16px', 
+                        padding: '12px', 
+                        backgroundColor: '#f7fafc', 
+                        borderRadius: '8px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '12px'
+                      }}>
+                        {/* 검색어 */}
+                        <input
+                          type="text"
+                          placeholder="과목명, 과목코드, 교수명 검색"
+                          value={courseFilter.searchText}
+                          onChange={(e) => setCourseFilter({ ...courseFilter, searchText: e.target.value })}
+                          style={{
+                            width: '100%',
+                            padding: '8px 12px',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '6px',
+                            fontSize: '0.9rem'
+                          }}
+                        />
+                        
+                        {/* 필터 버튼들 */}
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                          {/* 이수구분 */}
+                          <select
+                            value={courseFilter.type}
+                            onChange={(e) => setCourseFilter({ ...courseFilter, type: e.target.value })}
+                            style={{
+                              padding: '6px 10px',
+                              border: '1px solid #e2e8f0',
+                              borderRadius: '6px',
+                              fontSize: '0.85rem',
+                              backgroundColor: 'white'
+                            }}
+                          >
+                            <option value="">이수구분 전체</option>
+                            <option value="전필">전공필수</option>
+                            <option value="전선">전공선택</option>
+                            <option value="교양">교양</option>
+                            </select>
+                            
+                            {/* 학점 */}
+                          <select
+                            value={courseFilter.credits}
+                            onChange={(e) => setCourseFilter({ ...courseFilter, credits: e.target.value })}
+                            style={{
+                              padding: '6px 10px',
+                              border: '1px solid #e2e8f0',
+                              borderRadius: '6px',
+                              fontSize: '0.85rem',
+                              backgroundColor: 'white'
+                            }}
+                          >
+                            <option value="">학점 전체</option>
+                            <option value="1">1학점</option>
+                            <option value="2">2학점</option>
+                            <option value="3">3학점</option>
+                            <option value="4">4학점</option>
+                          </select>
+                          
+                          {/* 시간대 */}
+                          <select
+                            value={courseFilter.timeSlot}
+                            onChange={(e) => setCourseFilter({ ...courseFilter, timeSlot: e.target.value })}
+                            style={{
+                              padding: '6px 10px',
+                              border: '1px solid #e2e8f0',
+                              borderRadius: '6px',
+                              fontSize: '0.85rem',
+                              backgroundColor: 'white'
+                            }}
+                          >
+                            <option value="">시간대 전체</option>
+                            <option value="오전">오전</option>
+                            <option value="오후">오후</option>
+                            <option value="저녁">저녁</option>
+                          </select>
+                          
+                          {/* 필터 초기화 */}
+                          {(courseFilter.searchText || courseFilter.type || 
+                            courseFilter.credits || courseFilter.timeSlot) && (
+                            <button
+                              onClick={() => setCourseFilter({
+                                searchText: '',
+                                type: '',
+                                credits: '',
+                                timeSlot: ''
+                              })}
+                              style={{
+                                padding: '6px 12px',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '6px',
+                                fontSize: '0.85rem',
+                                backgroundColor: 'white',
+                                cursor: 'pointer',
+                                color: '#64748b'
+                              }}
+                            >
+                              초기화
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      
                       <div className="add-course-grid">
                         {savedAddableCoursesWithStatus.length === 0 ? (
                           <span className="empty-state-hint">추가할 수 있는 과목이 없어요.</span>
@@ -1830,11 +2303,13 @@ function Schedule() {
                             >
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
                                 {course.isAdded ? (
-                                  <span style={{ color: '#4f46e5', fontSize: '1.2rem', lineHeight: 1 }}>✓</span>
+                                  <>
+                                    <span style={{ color: '#4f46e5', fontSize: '1.2rem', lineHeight: 1 }}>✓</span>
+                                    <span>{course.name}</span>
+                                  </>
                                 ) : (
-                                  <span style={{ width: '1.2rem', height: '1.2rem' }}></span>
+                                  <span style={{ marginLeft: 0 }}>{course.name}</span>
                                 )}
-                                <span>{course.name}</span>
                               </div>
                               <small>{course.schedule || '시간 협의'}</small>
                               {courseToAdd?.courseId === course.courseId && !course.isAdded && (
@@ -2046,7 +2521,9 @@ function Schedule() {
               </div>
               <div className="course-info-row">
                 <span className="course-info-label">유형</span>
-                <span className="course-info-value">{selectedCourse.type}</span>
+                <span className="course-info-value">
+                  {selectedCourse.type === '전필' ? '전공필수' : selectedCourse.type === '전선' ? '전공선택' : selectedCourse.type}
+                </span>
               </div>
               <div className="course-info-row">
                 <span className="course-info-label">시간</span>

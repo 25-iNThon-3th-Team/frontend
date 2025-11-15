@@ -9,7 +9,7 @@ export default defineConfig({
       "/api": {
         target: "http://inthon.fjey.me:8080",
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ""),
+        // rewrite 제거: /api/classes -> http://inthon.fjey.me:8080/api/classes
         secure: false,
         ws: true,
       },
