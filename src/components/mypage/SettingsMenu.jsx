@@ -16,7 +16,7 @@ const SettingsMenu = () => {
             설정
           </h3>
           <div
-            className="flex items-center gap-3 py-2.5 px-2 cursor-pointer hover:bg-gray-50 rounded-lg transition-colors"
+            className="flex items-center gap-3 py-2.5 px-2 cursor-pointer settings-menu-item rounded-lg transition-colors"
             onClick={() => navigate("/settings/notifications")}
           >
             <svg
@@ -35,7 +35,7 @@ const SettingsMenu = () => {
             <span className="text-sm text-gray-900">알림 설정</span>
           </div>
           <div
-            className="flex items-center gap-3 py-2.5 px-2 cursor-pointer hover:bg-gray-50 rounded-lg transition-colors"
+            className="flex items-center gap-3 py-2.5 px-2 cursor-pointer settings-menu-item rounded-lg transition-colors"
             onClick={() => navigate("/settings/privacy")}
           >
             <svg
@@ -56,7 +56,7 @@ const SettingsMenu = () => {
             </span>
           </div>
           <div
-            className="flex items-center gap-3 py-2.5 px-2 cursor-pointer hover:bg-gray-50 rounded-lg transition-colors"
+            className="flex items-center gap-3 py-2.5 px-2 cursor-pointer settings-menu-item rounded-lg transition-colors"
             onClick={() => navigate("/settings/language")}
           >
             <svg
@@ -75,7 +75,7 @@ const SettingsMenu = () => {
             <span className="text-sm text-gray-900">언어 설정</span>
           </div>
           <div
-            className="flex items-center gap-3 py-2.5 px-2 cursor-pointer hover:bg-gray-50 rounded-lg transition-colors"
+            className="flex items-center gap-3 py-2.5 px-2 cursor-pointer settings-menu-item rounded-lg transition-colors"
             onClick={() => navigate("/settings/theme")}
           >
             <svg
@@ -101,7 +101,7 @@ const SettingsMenu = () => {
             고객 지원
           </h3>
           <div
-            className="flex items-center gap-3 py-2.5 px-2 cursor-pointer hover:bg-gray-50 rounded-lg transition-colors"
+            className="flex items-center gap-3 py-2.5 px-2 cursor-pointer settings-menu-item rounded-lg transition-colors"
             onClick={() => handleMenuClick("/guide")}
           >
             <svg
@@ -120,7 +120,7 @@ const SettingsMenu = () => {
             <span className="text-sm text-gray-900">이용안내</span>
           </div>
           <div
-            className="flex items-center gap-3 py-2.5 px-2 cursor-pointer hover:bg-gray-50 rounded-lg transition-colors"
+            className="flex items-center gap-3 py-2.5 px-2 cursor-pointer settings-menu-item rounded-lg transition-colors"
             onClick={() => navigate("/contact")}
           >
             <svg
@@ -146,7 +146,7 @@ const SettingsMenu = () => {
             정보
           </h3>
           <div
-            className="flex items-center gap-3 py-2.5 px-2 cursor-pointer hover:bg-gray-50 rounded-lg transition-colors"
+            className="flex items-center gap-3 py-2.5 px-2 cursor-pointer settings-menu-item rounded-lg transition-colors"
             onClick={() => navigate("/terms")}
           >
             <svg
@@ -165,7 +165,7 @@ const SettingsMenu = () => {
             <span className="text-sm text-gray-900">이용 약관</span>
           </div>
           <div
-            className="flex items-center gap-3 py-2.5 px-2 cursor-pointer hover:bg-gray-50 rounded-lg transition-colors"
+            className="flex items-center gap-3 py-2.5 px-2 cursor-pointer settings-menu-item rounded-lg transition-colors"
             onClick={() => navigate("/privacy-policy")}
           >
             <svg
@@ -184,7 +184,7 @@ const SettingsMenu = () => {
             <span className="text-sm text-gray-900">개인정보 처리방침</span>
           </div>
           <div
-            className="flex items-center gap-3 py-2.5 px-2 cursor-pointer hover:bg-gray-50 rounded-lg transition-colors"
+            className="flex items-center gap-3 py-2.5 px-2 cursor-pointer settings-menu-item rounded-lg transition-colors"
             onClick={() => navigate("/community-rules")}
           >
             <svg
@@ -210,7 +210,7 @@ const SettingsMenu = () => {
             계정 관리
           </h3>
           <div
-            className="flex items-center gap-3 py-2.5 px-2 cursor-pointer hover:bg-gray-50 rounded-lg transition-colors"
+            className="flex items-center gap-3 py-2.5 px-2 cursor-pointer settings-menu-item rounded-lg transition-colors"
             onClick={() => navigate("/change-password")}
           >
             <svg

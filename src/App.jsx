@@ -20,20 +20,26 @@ import ThemeSettings from "./pages/ThemeSettings";
 import Terms from "./pages/Terms";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import CommunityRules from "./pages/CommunityRules";
+import { useThemeStore } from "./store/themeStore";
 import "./App.css";
 
 function App() {
   const location = useLocation();
   const { checkLogin } = useAuthStore();
+  const { initTheme } = useThemeStore();
 
   useEffect(() => {
     checkLogin();
   }, [checkLogin]);
 
+  // 테마 초기화
+  useEffect(() => {
+    initTheme();
+  }, [initTheme]);
+
   const isChatPage =
     location.pathname.startsWith("/chat/") &&
     !location.pathname.startsWith("/chatlist");
-
   return (
     <div className="App">
       <Routes>

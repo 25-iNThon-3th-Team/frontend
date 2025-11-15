@@ -1,34 +1,89 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useThemeStore } from "../store/themeStore";
 import "../App.css";
 
 function ThemeSettings() {
   const navigate = useNavigate();
-  const [selectedTheme, setSelectedTheme] = useState("light");
+  const { theme, setTheme } = useThemeStore();
+  const [selectedTheme, setSelectedTheme] = useState(theme);
+  
+  useEffect(() => {
+    setSelectedTheme(theme);
+  }, [theme]);
+
+  const SunIcon = () => (
+    <svg
+      className="w-5 h-5 text-gray-600"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+      />
+    </svg>
+  );
+
+  const MoonIcon = () => (
+    <svg
+      className="w-5 h-5 text-gray-600"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+      />
+    </svg>
+  );
+
+  const AutoIcon = () => (
+    <svg
+      className="w-5 h-5 text-gray-600"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+      />
+    </svg>
+  );
 
   const themes = [
     {
       code: "light",
       name: "라이트 모드",
       description: "밝은 테마",
-      icon: "☀️",
+      icon: <SunIcon />,
     },
     {
       code: "dark",
       name: "다크 모드",
       description: "어두운 테마",
-      icon: "🌙",
+      icon: <MoonIcon />,
     },
     {
       code: "auto",
       name: "자동",
       description: "시스템 설정에 따름",
-      icon: "🔄",
+      icon: <AutoIcon />,
     },
   ];
 
   const handleSave = () => {
-    // API 호출하여 테마 설정 저장
+    // 테마 설정 저장
+    setTheme(selectedTheme);
     console.log("테마 설정 저장:", selectedTheme);
     alert("테마 설정이 저장되었습니다.");
     navigate("/mypage");
@@ -40,7 +95,7 @@ function ThemeSettings() {
         <div className="flex items-center mb-3">
           <button
             onClick={() => navigate(-1)}
-            className="p-1 mr-2 rounded-full hover:bg-gray-100"
+            className="p-1 mr-2 rounded-full hover:bg-gray-200"
           >
             <svg
               className="w-5 h-5 text-gray-700"
@@ -69,14 +124,14 @@ function ThemeSettings() {
             {themes.map((theme) => (
               <label
                 key={theme.code}
-                className={`flex items-center justify-between p-4 cursor-pointer border-2 rounded-lg transition-all ${
+                className={`flex items-center justify-between p-4 cursor-pointer border rounded-lg transition-all ${
                   selectedTheme === theme.code
-                    ? "border-indigo-600 bg-indigo-50"
+                    ? "border-gray-400 bg-gray-50"
                     : "border-gray-200 hover:border-gray-300"
                 }`}
               >
                 <div className="flex items-center">
-                  <span className="text-3xl mr-3">{theme.icon}</span>
+                  <div className="mr-3">{theme.icon}</div>
                   <div>
                     <div className="text-sm font-medium text-gray-900">
                       {theme.name}
@@ -92,7 +147,7 @@ function ThemeSettings() {
                   value={theme.code}
                   checked={selectedTheme === theme.code}
                   onChange={(e) => setSelectedTheme(e.target.value)}
-                  className="w-4 h-4 text-indigo-600 focus:ring-indigo-500"
+                  className="w-4 h-4 text-gray-600 focus:ring-gray-500"
                 />
               </label>
             ))}
@@ -100,7 +155,7 @@ function ThemeSettings() {
 
           <button
             onClick={handleSave}
-            className="w-full mt-6 px-4 py-2 bg-gradient-to-r from-indigo-600 to-blue-600 text-white text-base rounded-lg hover:from-indigo-700 hover:to-blue-700 transition-all font-medium"
+            className="w-full mt-6 px-4 py-2 bg-gray-800 text-white text-base rounded-lg hover:bg-gray-700 transition-all font-medium"
           >
             저장
           </button>

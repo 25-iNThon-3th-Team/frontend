@@ -224,7 +224,7 @@ function Mentor() {
         </div>
 
         {/* 안내 문구 */}
-        <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200 rounded-lg px-3.5 py-2.5 mb-3">
+        <div className="bg-gradient-to-r from-indigo-50 to-blue-50 dark:!from-gray-800 dark:!to-gray-700 border border-indigo-200 dark:border-gray-600 rounded-lg px-3.5 py-2.5 mb-3">
           <span className="text-xs text-gray-700 leading-relaxed">수강을 고민 중인 수업의 선수강자 선배들과 연결되어 실제 후기와 조언을 받아보세요.</span>
         </div>
 
@@ -247,7 +247,7 @@ function Mentor() {
                 >
                   {/* 선배 정보 헤더 */}
                   <div 
-                    className="p-3 hover:bg-indigo-50 transition-all cursor-pointer"
+                    className="p-3 mentor-tile-header transition-all cursor-pointer"
                     onClick={() => handleSeniorClick(senior.id)}
                   >
                     <div className="flex gap-3 items-start">
@@ -299,7 +299,7 @@ function Mentor() {
                         {senior.courses.map((course, idx) => (
                           <div 
                             key={idx}
-                            className="flex items-center justify-between p-2.5 bg-white rounded-lg border border-gray-200 hover:border-indigo-300 transition-colors"
+                            className="flex items-center justify-between p-2.5 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
                           >
                             <div className="flex-1">
                               <div className="text-sm font-medium text-gray-900">
