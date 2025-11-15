@@ -1,5 +1,7 @@
 // Course types
-export type CourseType = '전필' | '전선' | '교양';
+import {MajorProps} from "./major.ts";
+
+export type CourseType = 'MAJOR_REQUIRED' | 'MAJOR_ELECTIVE' | '교양';
 
 export interface CompletedCourse {
   courseId: string;
@@ -11,22 +13,14 @@ export interface CompletedCourse {
 }
 
 export interface Course {
-  courseId: string;
+  id: string;
+  courseCode: string;
   name: string;
+  major: MajorProps | undefined | null;
+  creditType: CourseType;
   credits: number;
-  professor: string;
-  schedule: string;
-  prerequisites: string[];
-  difficulty: number; // 1-5
-  workload: number; // 1-5
-  type: CourseType;
-  description?: string;
-  reviews?: CourseReview[];
-  semester?: number; // 1-8
-  location?: string; // 수업 장소
-  grade?: number; // 학년 (1-4)
-  enrollment?: number; // 담은 수
-  capacity?: number; // 정원
+  competitionRate: number;
+  easinessScore: number;
 }
 
 export interface CourseReview {
