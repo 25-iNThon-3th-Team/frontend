@@ -2,8 +2,9 @@ import { useCareerStore } from '../../store/careerStore';
 import { Track } from '../../types/career';
 
 function CareerRecommendation() {
-  const { tracks, selectedTrack, selectTrack, getRecommendedTracks } = useCareerStore();
+  const { tracks, selectedTrack, selectTrack, getRecommendedTracks, getCrossMajorsForTrack } = useCareerStore();
   const recommendedTracks = getRecommendedTracks();
+  const relatedCrossMajors = selectedTrack ? getCrossMajorsForTrack(selectedTrack.trackId) : [];
 
   const handleTrackClick = (track: Track) => {
     selectTrack(track);
@@ -27,7 +28,7 @@ function CareerRecommendation() {
             <div className="text-sm font-semibold text-gray-900 mb-1">{track.name}</div>
             <div className="text-xs text-gray-600 mb-2.5 line-clamp-2 leading-relaxed">{track.description}</div>
             <div className="flex items-center justify-between">
-              <div className="text-xs text-gray-500">적합도</div>
+              <div className="text-xs text-gray-500">진도</div>
               <div className="flex items-center gap-1.5">
                 <div className="w-14 h-1.5 bg-gray-200 rounded-full overflow-hidden">
                   <div
@@ -67,6 +68,57 @@ function CareerRecommendation() {
                     <span key={courseId} className="px-2 py-0.5 bg-white text-indigo-700 rounded text-xs border border-indigo-300">
                       {courseId}
                     </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {selectedTrack.workFocus && (
+              <div>
+                <div className="text-xs font-medium text-gray-700 mb-1.5">어떤 일을 하나요?</div>
+                <p className="text-xs text-gray-600 leading-relaxed">{selectedTrack.workFocus}</p>
+              </div>
+            )}
+
+            {selectedTrack.aptitudeTraits && selectedTrack.aptitudeTraits.length > 0 && (
+              <div>
+                <div className="text-xs font-medium text-gray-700 mb-1.5">적성 & 특징</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {selectedTrack.aptitudeTraits.map((trait) => (
+                    <span
+                      key={trait}
+                      className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs border border-gray-200"
+                    >
+                      {trait}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {relatedCrossMajors.length > 0 && (
+              <div>
+                <div className="text-xs font-medium text-gray-700 mb-1.5">연계 이중전공</div>
+                <div className="flex flex-col gap-1.5">
+                  {relatedCrossMajors.map((option) => (
+                    <div key={option.id} className="p-2 bg-gray-50 rounded border border-gray-100">
+                      <div className="text-[11px] font-semibold text-gray-800">
+                        {option.emoji} {option.title}
+                      </div>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {option.keywords.slice(0, 3).map((keyword) => (
+                          <span
+                            key={`${option.id}-${keyword}`}
+                            className="px-1.5 py-0.5 bg-white text-gray-700 rounded text-[10px] border border-gray-200"
+                          >
+                            {keyword}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="text-[11px] text-gray-600 mt-1">
+                        조합 예시: {option.comboExamples.join(', ')}
+                      </div>
+                    </div>
                   ))}
                 </div>
               </div>

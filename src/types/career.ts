@@ -43,6 +43,26 @@ export interface Track {
   requiredCourses: string[]; // courseIds
   optionalCourses: string[]; // courseIds
   fitScore?: number; // 0-100
+  workFocus?: string;
+  aptitudeTraits?: string[];
+}
+
+export interface CrossMajorSchedulePattern {
+  phase: string;
+  details: string[];
+}
+
+export interface CrossMajorOption {
+  id: string;
+  rank: number;
+  emoji: string;
+  title: string;
+  majors: string[];
+  keywords: string[];
+  reason: string;
+  schedulePatterns: CrossMajorSchedulePattern[];
+  comboExamples: string[];
+  trackMatches: string[];
 }
 
 // Roadmap types

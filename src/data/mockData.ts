@@ -1,4 +1,4 @@
-import { Course, CompletedCourse, Track } from '../types/career';
+import { Course, CompletedCourse, Track, CrossMajorOption } from '../types/career';
 
 // Mock completed courses
 export const mockCompletedCourses: CompletedCourse[] = [
@@ -1468,7 +1468,9 @@ export const mockTracks: Track[] = [
     description: '인공지능 및 머신러닝 전문가 양성',
     requiredCourses: ['CS201', 'AI301', 'AI302'],
     optionalCourses: ['DS302'],
-    fitScore: 85
+    fitScore: 85,
+    workFocus: '머신러닝 모델을 설계·학습시키고 데이터 파이프라인을 통해 예측·분류 문제를 해결합니다.',
+    aptitudeTraits: ['수학/통계에 강함', '새로운 연구 트렌드 학습을 즐김', '실험과 튜닝에 인내심이 있음', '데이터 기반 의사결정을 선호']
   },
   {
     trackId: 'data',
@@ -1476,7 +1478,9 @@ export const mockTracks: Track[] = [
     description: '데이터 과학 및 분석 전문가',
     requiredCourses: ['DS301', 'DS302', 'AI301'],
     optionalCourses: ['AI302'],
-    fitScore: 75
+    fitScore: 75,
+    workFocus: '대규모 데이터를 수집·정제·시각화하고 분석 모델로 비즈니스 인사이트를 만들어냅니다.',
+    aptitudeTraits: ['문제 정의에 능숙', '데이터 해석과 스토리텔링을 좋아함', '도메인 지식 학습을 즐김', '커뮤니케이션이 원활']
   },
   {
     trackId: 'backend',
@@ -1484,7 +1488,9 @@ export const mockTracks: Track[] = [
     description: '백엔드 개발 전문가',
     requiredCourses: ['BE301', 'BE302', 'DS301'],
     optionalCourses: ['CS201'],
-    fitScore: 70
+    fitScore: 70,
+    workFocus: '서비스 로직과 API를 설계하고 데이터베이스·인프라를 구성해 안정적인 시스템을 만듭니다.',
+    aptitudeTraits: ['논리적 설계 능력', '디버깅과 최적화를 즐김', '안정성/확장성에 관심', '팀과의 협업을 선호']
   },
   {
     trackId: 'security',
@@ -1492,7 +1498,110 @@ export const mockTracks: Track[] = [
     description: '정보보안 전문가',
     requiredCourses: ['CS201', 'BE301'],
     optionalCourses: [],
-    fitScore: 60
+    fitScore: 60,
+    workFocus: '시스템과 네트워크의 취약점을 진단하고 보안 정책·대응 체계를 설계합니다.',
+    aptitudeTraits: ['위험 감지에 민감', '세밀한 분석을 즐김', '윤리 의식이 확고', '모의침투 등 탐구심이 강함']
+  }
+];
+
+export const mockCrossMajors: CrossMajorOption[] = [
+  {
+    id: 'biz',
+    rank: 1,
+    emoji: '🥇',
+    title: '경영 · 경제 (상경계열)',
+    majors: ['경영학', '경제학', '글로벌비즈니스'],
+    keywords: ['IT + 비즈니스', '기획', '창업', 'PM'],
+    reason:
+      '정보대에서 개발 역량을 다지고 상경 계열에서 돈의 흐름·조직·비즈니스 구조를 배우면 서비스 기획, 프로덕트 매니저, 창업 분야로 확장하기 좋습니다.',
+    schedulePatterns: [
+      {
+        phase: '1~2학년 초',
+        details: [
+          '정보대: 자료구조, 알고리즘, 운영체제, 데이터베이스 등 전필 위주로 기초 다지기',
+          '상경: 경영학원론, 회계원리, 경제학원론 등 입문 과목으로 비즈니스 기본 개념 쌓기'
+        ]
+      },
+      {
+        phase: '2학년 후반~3학년',
+        details: [
+          '상경: 마케팅, 재무관리, 조직행동론, 경영통계 등 심화 과목 이수',
+          '정보대: 웹/앱, AI, 데이터 과목을 병행하며 기획 가능한 개발 역량 확보'
+        ]
+      },
+      {
+        phase: '4학년',
+        details: [
+          '캡스톤·프로젝트 과목을 비즈니스 모델/창업 과목과 묶어 실전 프로젝트 진행',
+          '스타트업, PM 트랙을 노리는 학생들이 이 조합으로 포트폴리오 구성'
+        ]
+      }
+    ],
+    comboExamples: ['백엔드 + 서비스 기획', '데이터 분석 + 비즈니스 인사이트'],
+    trackMatches: ['backend', 'data', 'ai']
+  },
+  {
+    id: 'data-science',
+    rank: 2,
+    emoji: '🥈',
+    title: '통계 · 데이터사이언스 · 산업공학',
+    majors: ['통계학', '데이터사이언스', '산업공학'],
+    keywords: ['데이터 과학', '머신러닝', '분석', '최적화'],
+    reason:
+      '정보대에서 AI·데이터 과목을 들으면서 통계/산공에서 이론·실험 설계·최적화를 배우면 데이터 사이언티스트와 ML 엔지니어 직무에 강점을 가질 수 있습니다.',
+    schedulePatterns: [
+      {
+        phase: '1~2학년',
+        details: [
+          '통계/산공: 확률과 통계, 선형대수, 통계학입문, 공업수학 등 수학·통계 기초 선이수',
+          '정보대: 프로그래밍 입문, 자료구조, 객체지향, 컴퓨터구조 등 필수 과목 이수'
+        ]
+      },
+      {
+        phase: '2~3학년',
+        details: [
+          '통계: 회귀분석, 시계열, 실험계획법 등 분석 과목 집중',
+          '정보대: 머신러닝, 데이터마이닝, 인공지능, 빅데이터 처리 등 실무 과목 병행'
+        ]
+      },
+      {
+        phase: '3~4학년',
+        details: [
+          '데이터 분석 프로젝트/논문 형태로 통계 방법론 + 구현력을 합친 팀프로젝트 진행',
+          '인턴·취업용 포트폴리오에 Python·ML·회귀/실험 설계 역량을 강조하기 좋음'
+        ]
+      }
+    ],
+    comboExamples: ['Python + ML + 회귀/실험 설계', '데이터 기반 의사결정 프로젝트'],
+    trackMatches: ['ai', 'data']
+  },
+  {
+    id: 'ux',
+    rank: 3,
+    emoji: '🥉',
+    title: '심리 · 언론정보 · 디자인(콘텐츠)',
+    majors: ['심리학', '언론정보', '콘텐츠디자인'],
+    keywords: ['UX/UI', 'HCI', '서비스·콘텐츠 기획'],
+    reason:
+      '정보대에서 만드는 법(How)을, 인문·사회/디자인에서 사용자의 Why를 배우면 UX 디자이너·서비스 기획·콘텐츠 기획 포지션으로 강점이 생깁니다.',
+    schedulePatterns: [
+      {
+        phase: '1~2학년',
+        details: [
+          '정보대: 기초 코딩, 자료구조, 웹/모바일 입문으로 구현 기반 만들기',
+          '심리: 심리학개론, 인지/사회/소비자 심리, 언론/디자인: 미디어 개론, 색채학, 인터페이스 기초'
+        ]
+      },
+      {
+        phase: '3~4학년',
+        details: [
+          '정보대: HCI, 모바일 UX, 인터랙션 디자인, 웹/앱 프로젝트 확대',
+          '복수전공: UX 리서치, 사용자 조사, 콘텐츠 기획, 브랜딩 과목으로 리서치 스킬 강화'
+        ]
+      }
+    ],
+    comboExamples: ['프로토타입 구현 + UX 리서치', '콘텐츠 기획 + 인터랙션 디자인'],
+    trackMatches: ['backend', 'data']
   }
 ];
 
