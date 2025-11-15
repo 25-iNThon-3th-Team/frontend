@@ -27,7 +27,7 @@
 | `Dashboard` | 학점·이수 현황 요약 | `completedCourses` |
 | `CareerRecommendation` | 트랙 추천 및 선택 | `tracks`, `selectedTrack` |
 | `Roadmap` | 학기별 로드맵, 다음 과목 추천 | `allCourses`, `selectedTrack`, `completedCourses` |
-| `Connections` | 선수/동시 수강자 매칭 | `studentConnections` |
+| `Connections` | 선수 수강자 매칭 | `studentConnections` |
 | `CoursePreferenceCard` | 시간표 제약 조건 입력 | `coursePreference` |
 
 ## 데이터 & 상태 관리
@@ -53,6 +53,3 @@
    - 같은 과목 이수자 목록을 확인하고,
    - 로드맵에서 이후 추천 과목을 확인하며,
    - 일정에 반영할 수 있습니다.
-
-이 README는 위 흐름을 기준으로 문서를 유지·보수해야 합니다. 기능 추가 시 “시간표 자동화 → 동료 매칭 → 맞춤 로드맵”의 3단계 경험을 깨지 않는지 확인하세요.
-

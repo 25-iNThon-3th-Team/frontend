@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-const ProfileCard = ({ profile, onSave, onInputChange, onLogout, onLogin }) => {
+const ProfileCard = ({ profile, onSave, onInputChange, onLogout }) => {
   const [isEditing, setIsEditing] = useState(false);
 
   const handleEditToggle = () => {
@@ -42,7 +42,6 @@ const ProfileCard = ({ profile, onSave, onInputChange, onLogout, onLogin }) => {
             <h2 className="text-lg font-semibold text-gray-900 mb-1">
               {profile.name}
             </h2>
-            <p className="text-sm text-gray-600 mb-1">{profile.email}</p>
             <p className="text-xs text-gray-500 mb-1">
               {profile.studentId} · {profile.major}
             </p>
@@ -63,12 +62,6 @@ const ProfileCard = ({ profile, onSave, onInputChange, onLogout, onLogin }) => {
               >
                 로그아웃
               </button>
-              <button
-                onClick={onLogin}
-                className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors font-medium"
-              >
-                로그인 테스트
-              </button>
             </div>
           </>
         ) : (
@@ -79,13 +72,6 @@ const ProfileCard = ({ profile, onSave, onInputChange, onLogout, onLogin }) => {
                 value={profile.name}
                 onChange={(e) => onInputChange("name", e.target.value)}
                 placeholder="이름"
-                className="w-full px-3 py-2 mb-2 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400"
-              />
-              <input
-                type="email"
-                value={profile.email}
-                onChange={(e) => onInputChange("email", e.target.value)}
-                placeholder="이메일"
                 className="w-full px-3 py-2 mb-2 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400"
               />
               <input

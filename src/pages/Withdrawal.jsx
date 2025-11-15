@@ -13,10 +13,13 @@ function Withdrawal() {
       return;
     }
 
-    // Perform withdrawal logic here (e.g., API call)
-    console.log("회원 탈퇴 처리");
-    alert("회원 탈퇴가 처리되었습니다. 이용해주셔서 감사합니다.");
-    navigate("/"); // Redirect to home page
+    // 최종 확인
+    if (!window.confirm("정말로 회원탈퇴를 하시겠습니까? 이 작업은 되돌릴 수 없습니다.")) {
+      return;
+    }
+
+    // 회원탈퇴 기능은 현재 준비 중입니다.
+    alert("회원 탈퇴 기능은 현재 준비 중입니다.");
   };
 
   return (
@@ -91,7 +94,7 @@ function Withdrawal() {
             <button
               onClick={handleWithdrawal}
               disabled={confirmText !== "회원탈퇴"}
-              className="w-full px-4 py-2 bg-red-600 text-white text-base rounded-lg transition-all font-medium disabled:bg-red-300 disabled:cursor-not-allowed"
+              className="w-full px-4 py-2 bg-red-600 text-white text-base rounded-lg transition-all font-medium disabled:bg-red-300 disabled:cursor-not-allowed hover:bg-red-700"
             >
               계정 영구 삭제
             </button>

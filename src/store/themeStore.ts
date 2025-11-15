@@ -87,4 +87,3 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
     applyTheme(effectiveTheme);
   },
 }));
-

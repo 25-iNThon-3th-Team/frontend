@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import '../App.css'
 import axios from "../api/axios";
 import useAuthStore from '../store/authStore';
+import KourseLogo from '../../KourseLogo.png';
 
 function Home() {
   const navigate = useNavigate()
@@ -72,10 +73,41 @@ function Home() {
     setIsLoading(true)
     setErrorMessage('')
 
-    const username = e.target['signup-name'].value // 이름 (username)
-    const userid = e.target['signup-userid'].value // 아이디 (userid)
+    const username = e.target['signup-name'].value.trim() // 이름 (username)
+    const userid = e.target['signup-userid'].value.trim() // 아이디 (userid)
     const password = e.target['signup-password'].value
     const passwordConfirm = e.target['signup-password-confirm'].value
+
+    // 입력값 검증
+    if (!username || username.length === 0) {
+      setErrorMessage('이름을 입력해주세요.')
+      setIsLoading(false)
+      return
+    }
+
+    if (!userid || userid.length === 0) {
+      setErrorMessage('아이디를 입력해주세요.')
+      setIsLoading(false)
+      return
+    }
+
+    if (userid.length < 3 || userid.length > 20) {
+      setErrorMessage('아이디는 3자 이상 20자 이하여야 합니다.')
+      setIsLoading(false)
+      return
+    }
+
+    if (!password || password.length === 0) {
+      setErrorMessage('비밀번호를 입력해주세요.')
+      setIsLoading(false)
+      return
+    }
+
+    if (password.length < 4 || password.length > 50) {
+      setErrorMessage('비밀번호는 4자 이상 50자 이하여야 합니다.')
+      setIsLoading(false)
+      return
+    }
 
     // 비밀번호 확인
     if (password !== passwordConfirm) {
@@ -85,20 +117,35 @@ function Home() {
     }
 
     try {
+      console.log("회원가입 요청:", { username, userid, password: '***' })
       const response = await axios.post('/register', {
         username: username, // 이름은 username으로 전송
-        userid: userid,     // 아이디는 userid로 전송
+        userId: userid,     // 아이디는 userId (camelCase)로 전송 (백엔드 요구사항)
         password: password
       })
 
-      // 회원가입 성공
-      if (response.data && response.data.token) {
-        login(response.data.token)
-        navigate('/schedule')
+      console.log("회원가입 성공:", response.data)
+      console.log("응답 전체:", response)
+
+      // 회원가입 성공 처리
+      // 성공 응답이 오면 (200 상태 코드) 알림을 띄우고 로그인 페이지로 이동
+      if (response.status === 200 || response.status === 201) {
+        // 회원가입 완료 알림
+        alert('회원가입이 완료되었습니다. 로그인해주세요.')
+        
+        // 로그인 탭으로 전환하고 에러 메시지 초기화
+        setIsLogin(true)
+        setErrorMessage('')
+        
+        // 폼 초기화는 자동으로 됨 (페이지 이동 없이 탭만 전환)
       } else {
+        console.warn("예상치 못한 응답 상태 코드:", response.status)
         setErrorMessage('회원가입에 실패했습니다. 서버 응답을 확인할 수 없습니다.')
       }
     } catch (error) {
+      console.error("회원가입 에러:", error)
+      console.error("에러 응답:", error.response)
+      
       // API 연결 실패 (네트워크 에러, 타임아웃 등)
       if (!error.response) {
         setErrorMessage('서버에 연결할 수 없습니다. 네트워크 연결을 확인해주세요.')
@@ -110,7 +157,20 @@ function Home() {
       } else if (error.response.status === 409) {
         setErrorMessage('이미 사용 중인 아이디입니다.')
       } else if (error.response.status >= 500) {
-        setErrorMessage('서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.')
+        // 500 에러의 경우 서버 메시지 확인
+        const errorData = error.response.data
+        const exception = errorData?.exception || ''
+        
+        // DataIntegrityViolationException은 보통 중복 데이터나 제약 조건 위반
+        // 아이디는 중복이 안 되지만 이름은 중복 가능
+        if (exception.includes('DataIntegrityViolationException')) {
+          // 아이디 중복으로 처리 (이름은 중복 가능하므로)
+          setErrorMessage('이미 사용 중인 아이디입니다. 다른 아이디를 사용해주세요.')
+        } else {
+          // 다른 서버 오류
+          const serverMessage = errorData?.message || errorData?.error || '서버 오류가 발생했습니다.'
+          setErrorMessage(`서버 오류: ${serverMessage}. 잠시 후 다시 시도해주세요.`)
+        }
       } else {
         setErrorMessage(`회원가입에 실패했습니다. (오류 코드: ${error.response.status})`)
       }
@@ -124,7 +184,15 @@ function Home() {
       <div className="page-content">
         {/* 로고 및 타이틀 */}
         <div className="home-header">
-          <h1 className="home-title">Kourse</h1>
+          <div className="home-brand">
+            <div className="home-logo">
+              <img src={KourseLogo} alt="Kourse 로고" />
+            </div>
+            <div className="home-title-wrapper">
+              <h1 className="home-title">Kourse</h1>
+              <p className="home-title-tagline">나만의 맞춤 학습 로드맵</p>
+            </div>
+          </div>
         </div>
 
         {/* 로그인/회원가입 탭 */}
@@ -192,22 +260,6 @@ function Home() {
                     {isLoading ? '로그인 중...' : '로그인'}
                   </button>
                 </form>
-                <button
-                  type="button"
-                  onClick={() => {
-                    // 개발용 임시 로그인 - 무조건 로그인 처리
-                    login('dummy-token')
-                    navigate('/schedule')
-                  }}
-                  className="home-auth-button"
-                  style={{
-                    marginTop: '12px',
-                    background: '#6b7280',
-                    fontSize: '0.9rem'
-                  }}
-                >
-                  임시 로그인 (개발용)
-                </button>
               </>
             ) : (
               <form onSubmit={handleSignup}>
