@@ -255,6 +255,15 @@
   z-index: 100;
 }
 
+.schedule-nav-slider {
+  position: absolute;
+  bottom: 0;
+  height: 3px;
+  background-color: #4f46e5;
+  transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1;
+}
+
 .schedule-nav-item {
   background: none;
   border: none;
@@ -262,21 +271,22 @@
   font-size: 0.9rem;
   font-weight: 600;
   padding: 8px 16px;
-  border-radius: 8px;
+  padding-bottom: 12px;
+  border-radius: 0;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: color 0.3s ease;
   flex: 1;
   text-align: center;
+  position: relative;
+  z-index: 2;
 }
 
 .schedule-nav-item:hover {
-  background: #f7fafc;
   color: #4a5568;
 }
 
 .schedule-nav-item.active {
   color: #4f46e5;
-  background: #f5f3ff;
 }
 
 .page-content {
@@ -1335,7 +1345,7 @@
 
 .timetable-head {
   display: grid;
-  grid-template-columns: 60px repeat(5, 1fr);
+  grid-template-columns: 35px repeat(5, 1fr);
   gap: 0;
   font-size: 0.85rem;
   font-weight: 600;
@@ -1362,7 +1372,7 @@
 .timetable-body {
   position: relative;
   display: grid;
-  grid-template-columns: 60px repeat(5, 1fr);
+  grid-template-columns: 35px repeat(5, 1fr);
   gap: 0;
 }
 
@@ -1403,7 +1413,7 @@
 
 .time-grid-line {
   position: absolute;
-  left: 60px;
+  left: 35px;
   right: 0;
   height: 1px;
   background: #e2e8f0;
@@ -1490,11 +1500,24 @@
 
 
 .inline-feedback {
-  margin: -4px 0 20px 0;
-  padding: 14px 16px;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10000;
+  padding: 14px 24px;
   border-radius: 14px;
   border: 1px solid;
   font-size: 0.9rem;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  pointer-events: none;
+  margin: 0;
+  opacity: 1;
+  transition: opacity 0.5s ease-out;
+}
+
+.inline-feedback.fading-out {
+  opacity: 0;
 }
 
 .inline-feedback.success {
@@ -1578,6 +1601,28 @@
   color: #4f46e5;
 }
 
+.schedule-theme-description {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.schedule-theme-label {
+  font-weight: 600;
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+
+.schedule-theme-text {
+  color: #64748b;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
 .saved-card-meta {
   display: inline-block;
   font-size: 0.85rem;
@@ -1647,6 +1692,14 @@
 
 .menu-item:first-child {
   border-bottom: 1px solid #e2e8f0;
+}
+
+.menu-item-danger {
+  color: #e53e3e;
+}
+
+.menu-item-danger:hover {
+  background-color: #fed7d7;
 }
 
 /* Semester Select Modal */
@@ -1869,6 +1922,22 @@
   color: #718096;
 }
 
+.add-course-pill.selected {
+  border-color: #4f46e5;
+  background: #f5f3ff;
+  border-style: solid;
+}
+
+.add-course-pill.added {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.add-course-pill.added:hover {
+  border-color: #cbd5f5;
+  background: #f8fafc;
+}
+
 .add-course-pill:hover {
   border-color: #a3bffa;
   background: #edf2ff;
@@ -1910,14 +1979,31 @@
   background: white;
   border-radius: 20px 20px 0 0;
   width: 100%;
-  max-height: 80vh;
-  height: 80vh;
+  max-height: 90vh;
+  min-height: 30vh;
   display: flex;
   flex-direction: column;
   animation: slideUp 0.3s ease;
   box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
   box-sizing: border-box;
   overflow: hidden;
+  position: relative;
+}
+
+.edit-bottom-sheet-drag-handle {
+  width: 40px;
+  height: 4px;
+  background: #cbd5e0;
+  border-radius: 2px;
+  margin: 12px auto 0 auto;
+  cursor: grab;
+  flex-shrink: 0;
+  transition: background-color 0.2s ease;
+}
+
+.edit-bottom-sheet-drag-handle:active {
+  cursor: grabbing;
+  background: #a0aec0;
 }
 
 @keyframes slideUp {
@@ -2433,6 +2519,24 @@
   justify-content: center;
 }
 
+.browse-header {
+  margin-bottom: 24px;
+  padding: 0 20px;
+}
+
+.browse-header-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1a202c;
+  margin: 0 0 8px 0;
+}
+
+.browse-header-count {
+  font-size: 0.95rem;
+  color: #64748b;
+  margin: 0;
+}
+
 .browse-carousel-container {
   position: relative;
   overflow: visible;
@@ -2449,14 +2553,20 @@
 
 .browse-carousel-slide {
   min-width: 100%;
+  width: 100%;
   flex-shrink: 0;
   padding: 0;
   display: flex;
   justify-content: center;
+  box-sizing: border-box;
 }
 
 .browse-schedule-card-wrapper {
   position: relative;
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  box-sizing: border-box;
 }
 
 .browse-carousel-container .schedule-card {
@@ -2466,6 +2576,17 @@
   margin: 0 auto;
   padding: 16px 20px;
   gap: 12px;
+  box-sizing: border-box;
+}
+
+.browse-carousel-container .saved-card {
+  box-shadow: 0 30px 60px rgba(15, 23, 42, 0.12);
+  max-width: 1400px;
+  width: calc(100% - 40px);
+  margin: 0 auto;
+  padding: 16px 20px;
+  gap: 12px;
+  box-sizing: border-box;
 }
 
 .browse-nav-button {
@@ -2501,11 +2622,11 @@
 }
 
 .browse-carousel-container .browse-nav-prev {
-  left: -20px;
+  left: -5px;
 }
 
 .browse-carousel-container .browse-nav-next {
-  right: -20px;
+  right: -5px;
 }
 
 .schedule-detail-content-fullscreen .schedule-meta {
