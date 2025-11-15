@@ -89,6 +89,9 @@ function MyPage() {
         localStorage.removeItem("token");
         sessionStorage.clear();
 
+        // 로그인 상태 변경을 위해 커스텀 이벤트 발생
+        window.dispatchEvent(new CustomEvent('authChange'));
+
         // 메인 페이지로 이동
         navigate("/");
         alert("로그아웃되었습니다.");
@@ -98,6 +101,10 @@ function MyPage() {
         // 에러가 발생해도 프론트엔드 세션은 정리
         localStorage.removeItem("token");
         sessionStorage.clear();
+        
+        // 로그인 상태 변경을 위해 커스텀 이벤트 발생
+        window.dispatchEvent(new CustomEvent('authChange'));
+        
         navigate("/");
         alert("로그아웃되었습니다.");
       }

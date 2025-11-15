@@ -1,5 +1,7 @@
 import { Routes, Route, useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
 import BottomNav from "./components/BottomNav";
+import Home from "./pages/Home";
 import Schedule from "./pages/Schedule";
 import Mentor from "./pages/Mentor";
 import Career from "./pages/Career";
@@ -22,10 +24,54 @@ import "./App.css";
 
 function App() {
   const location = useLocation();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  
   const isChatPage =
     location.pathname.startsWith("/chat/") &&
     !location.pathname.startsWith("/chatlist");
 
+  // 로그인 상태 확인
+  useEffect(() => {
+    const checkAuth = () => {
+      const token = localStorage.getItem("token");
+      setIsAuthenticated(!!token);
+    };
+    
+    // 초기 로그인 상태 확인
+    checkAuth();
+    
+    // localStorage 변경 감지 (다른 탭에서 로그인/로그아웃 시)
+    const handleStorageChange = () => {
+      checkAuth();
+    };
+    
+    // 커스텀 이벤트로 같은 탭에서의 로그인 상태 변경 감지
+    const handleAuthChange = () => {
+      checkAuth();
+    };
+    
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("authChange", handleAuthChange);
+    
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("authChange", handleAuthChange);
+    };
+  }, []);
+
+  // 로그인하지 않았으면 홈 페이지만 보여줌
+  if (!isAuthenticated) {
+    return (
+      <div className="App">
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="*" element={<Home />} />
+        </Routes>
+      </div>
+    );
+  }
+
+  // 로그인했으면 기존 앱 라우팅
   return (
     <div className="App">
       <Routes>
