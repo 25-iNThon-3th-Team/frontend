@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "../App.css";
 
@@ -12,6 +12,17 @@ function MyPage() {
     email: "user@example.com",
     studentId: "2020123456",
     major: "컴퓨터학과",
+    completedCredits: 78,
+    totalCredits: 130,
+  });
+
+  // 수강신청 성향 편집 상태
+  const [isEditingPreference, setIsEditingPreference] = useState(false);
+  const [coursePreference, setCoursePreference] = useState({
+    preferredOffDays: ["수요일"],
+    preferredTimeSlot: "morning", // morning, afternoon, evening
+    maxTransferMinutes: 15,
+    priorityOrder: ["전공필수", "전공선택", "교양"],
   });
 
   const handleMenuClick = (path) => {
@@ -75,13 +86,89 @@ function MyPage() {
     }
   };
 
-  // 통계 데이터 (예시)
-  const stats = {
-    connectedSeniors: 5,
-    activeChats: 3,
-    completedCredits: 78,
-    totalCredits: 130,
+  const handlePreferenceToggle = () => {
+    setIsEditingPreference(!isEditingPreference);
   };
+
+  const handlePreferenceSave = async () => {
+    try {
+      // API 호출하여 성향 저장
+      console.log("수강신청 성향 저장:", coursePreference);
+      setIsEditingPreference(false);
+      alert("수강신청 성향이 저장되었습니다!");
+    } catch (error) {
+      console.error("API 호출 에러:", error);
+      alert("저장 중 오류가 발생했습니다.");
+    }
+  };
+
+  const handlePreferenceChange = (field, value) => {
+    setCoursePreference({ ...coursePreference, [field]: value });
+  };
+
+  const toggleOffDay = (day) => {
+    const currentDays = coursePreference.preferredOffDays;
+    if (currentDays.includes(day)) {
+      handlePreferenceChange(
+        "preferredOffDays",
+        currentDays.filter((d) => d !== day)
+      );
+    } else {
+      handlePreferenceChange("preferredOffDays", [...currentDays, day]);
+    }
+  };
+
+  // 통계 데이터 (실제 데이터에서 계산)
+  const [stats, setStats] = useState({
+    connectedSeniors: 0,
+    activeChats: 0,
+    completedCredits: 0,
+    totalCredits: 130,
+  });
+
+  // 데이터 로드 및 통계 계산
+  useEffect(() => {
+    // 선배 데이터 가져오기 (실제로는 API에서 가져올 것)
+    const seniorData = {
+      1: { name: "김선배", major: "컴퓨터공학과", year: "20학번" },
+      2: { name: "이선배", major: "컴퓨터공학과", year: "21학번" },
+      3: { name: "박선배", major: "컴퓨터공학과", year: "19학번" },
+      4: { name: "최선배", major: "컴퓨터공학과", year: "20학번" },
+      5: { name: "정선배", major: "컴퓨터공학과", year: "18학번" },
+      6: { name: "강선배", major: "컴퓨터공학과", year: "21학번" },
+      7: { name: "윤선배", major: "컴퓨터공학과", year: "20학번" },
+    };
+
+    // 채팅 목록 가져오기 (실제로는 API에서 가져올 것)
+    const recentChats = [
+      {
+        seniorId: 1,
+        lastMessage: "수업 후기 궁금하시면 언제든 물어보세요!",
+        lastTime: "오후 2:30",
+        unread: 0,
+      },
+      {
+        seniorId: 3,
+        lastMessage: "알고리즘 수업은 정말 도움이 됐어요",
+        lastTime: "오전 11:20",
+        unread: 2,
+      },
+      {
+        seniorId: 5,
+        lastMessage: "데이터베이스 수업 자료 공유해드릴게요",
+        lastTime: "어제",
+        unread: 0,
+      },
+    ];
+
+    // 통계 계산
+    setStats({
+      connectedSeniors: Object.keys(seniorData).length, // 연결된 선배 수
+      activeChats: recentChats.length, // 진행 중인 대화 수
+      completedCredits: profile.completedCredits, // 이수 학점
+      totalCredits: profile.totalCredits,
+    });
+  }, [profile.completedCredits, profile.totalCredits]);
 
   return (
     <div className="page-container">
@@ -89,7 +176,7 @@ function MyPage() {
         <h1 className="page-title">마이페이지</h1>
 
         {/* 활동 통계 */}
-        <div className="grid grid-cols-3 gap-2 mb-3">
+        <div className="grid grid-cols-2 gap-2 mb-3">
           <div className="bg-white border border-indigo-200 rounded-lg p-3 text-center">
             <div className="text-xl font-semibold text-indigo-700">
               {stats.connectedSeniors}
@@ -101,12 +188,6 @@ function MyPage() {
               {stats.activeChats}
             </div>
             <div className="text-xs text-gray-600 mt-0.5">진행 중인 대화</div>
-          </div>
-          <div className="bg-white border border-indigo-200 rounded-lg p-3 text-center">
-            <div className="text-xl font-semibold text-indigo-700">
-              {stats.completedCredits}
-            </div>
-            <div className="text-xs text-gray-600 mt-0.5">이수 학점</div>
           </div>
         </div>
 
@@ -204,6 +285,203 @@ function MyPage() {
                   </div>
                 </div>
               </>
+            )}
+          </div>
+          {/* 수강신청 성향 카드 */}
+          <div className="bg-white rounded-lg p-4 mb-3 border border-gray-100">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-base font-semibold text-gray-900">
+                수강신청 성향
+              </h2>
+              {!isEditingPreference && (
+                <button
+                  onClick={handlePreferenceToggle}
+                  className="text-xs text-indigo-600 hover:text-indigo-700 font-medium"
+                >
+                  편집
+                </button>
+              )}
+            </div>
+
+            {!isEditingPreference ? (
+              <div className="space-y-3">
+                <div className="flex items-start gap-2">
+                  <svg
+                    className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
+                  </svg>
+                  <div className="flex-1">
+                    <div className="text-xs text-gray-500 mb-0.5">
+                      공강 희망 요일
+                    </div>
+                    <div className="text-sm text-gray-900">
+                      {coursePreference.preferredOffDays.length > 0
+                        ? coursePreference.preferredOffDays.join(", ")
+                        : "없음"}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <svg
+                    className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  <div className="flex-1">
+                    <div className="text-xs text-gray-500 mb-0.5">
+                      선호 시간대
+                    </div>
+                    <div className="text-sm text-gray-900">
+                      {coursePreference.preferredTimeSlot === "morning" &&
+                        "아침형 (09:00-12:00)"}
+                      {coursePreference.preferredTimeSlot === "afternoon" &&
+                        "오후형 (13:00-16:00)"}
+                      {coursePreference.preferredTimeSlot === "evening" &&
+                        "저녁형 (17:00-20:00)"}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <svg
+                    className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+                    />
+                  </svg>
+                  <div className="flex-1">
+                    <div className="text-xs text-gray-500 mb-0.5">
+                      이동 시간 제한
+                    </div>
+                    <div className="text-sm text-gray-900">
+                      {coursePreference.maxTransferMinutes}분
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <svg
+                    className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                    />
+                  </svg>
+                  <div className="flex-1">
+                    <div className="text-xs text-gray-500 mb-0.5">우선순위</div>
+                    <div className="text-sm text-gray-900">
+                      {coursePreference.priorityOrder.join(" > ")}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-2">
+                    공강 희망 요일
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {["월요일", "화요일", "수요일", "목요일", "금요일"].map(
+                      (day) => (
+                        <button
+                          key={day}
+                          onClick={() => toggleOffDay(day)}
+                          className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
+                            coursePreference.preferredOffDays.includes(day)
+                              ? "bg-indigo-600 text-white border-indigo-600"
+                              : "bg-white text-gray-700 border-gray-300 hover:border-indigo-300"
+                          }`}
+                        >
+                          {day}
+                        </button>
+                      )
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-2">
+                    선호 시간대
+                  </label>
+                  <select
+                    value={coursePreference.preferredTimeSlot}
+                    onChange={(e) =>
+                      handlePreferenceChange(
+                        "preferredTimeSlot",
+                        e.target.value
+                      )
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400"
+                  >
+                    <option value="morning">아침형 (09:00-12:00)</option>
+                    <option value="afternoon">오후형 (13:00-16:00)</option>
+                    <option value="evening">저녁형 (17:00-20:00)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-2">
+                    이동 시간 제한 (분)
+                  </label>
+                  <input
+                    type="number"
+                    value={coursePreference.maxTransferMinutes}
+                    onChange={(e) =>
+                      handlePreferenceChange(
+                        "maxTransferMinutes",
+                        parseInt(e.target.value)
+                      )
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400"
+                    min="0"
+                    max="60"
+                  />
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    onClick={handlePreferenceSave}
+                    className="flex-1 px-4 py-2 bg-gradient-to-r from-indigo-600 to-blue-600 text-white text-sm rounded-lg hover:from-indigo-700 hover:to-blue-700 transition-all font-medium"
+                  >
+                    저장
+                  </button>
+                  <button
+                    onClick={handlePreferenceToggle}
+                    className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                  >
+                    취소
+                  </button>
+                </div>
+              </div>
             )}
           </div>
           <div className="border-t border-gray-100 mt-4 pt-3">
