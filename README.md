@@ -1,15 +1,14 @@
-
-# Kourse - 맞춤형 학습 로드맵 플랫폼
+# Kourse - 정보대학의 올바른 Course
 
 <div align="center">
   <img src="./KourseLogo.png" alt="Kourse Logo" width="200"/>
-
-  **나만의 맞춤 학습 로드맵**
-
-  [![React](<https://img.shields.io/badge/React-18.2.0-61DAFB?logo=react>)](<https://reactjs.org/>)
-  [![TypeScript](<https://img.shields.io/badge/TypeScript-5.9.3-3178C6?logo=typescript>)](<https://www.typescriptlang.org/>)
-  [![Vite](<https://img.shields.io/badge/Vite-5.0.8-646CFF?logo=vite>)](<https://vitejs.dev/>)
-  [![Tailwind CSS](<https://img.shields.io/badge/Tailwind_CSS-3.4.18-38B2AC?logo=tailwind-css>)](<https://tailwindcss.com/>)
+  
+  **교육과 소통으로 연결하는 강의추천·선배매칭·진로탐색 플랫폼**
+  
+  [![React](https://img.shields.io/badge/React-18.2.0-61DAFB?logo=react)](https://reactjs.org/)
+  [![TypeScript](https://img.shields.io/badge/TypeScript-5.9.3-3178C6?logo=typescript)](https://www.typescriptlang.org/)
+  [![Vite](https://img.shields.io/badge/Vite-5.0.8-646CFF?logo=vite)](https://vitejs.dev/)
+  [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4.18-38B2AC?logo=tailwind-css)](https://tailwindcss.com/)
 </div>
 
 ---
@@ -24,79 +23,135 @@
 - [주요 컴포넌트](#-주요-컴포넌트)
 - [API 연동](#-api-연동)
 - [상태 관리](#-상태-관리)
+- [개발 가이드](#-개발-가이드)
 - [배포](#-배포)
-- [트러블 슈팅](#-트러블-슈팅)
-- [사용자 시나리오](#-사용자-시나리오) 
-
+- [사용자 시나리오](#-사용자-시나리오)
 ---
 
 ## 🎯 프로젝트 소개
 
-**Kourse**는 대학생들을 위한 지능형 학습 로드맵 플랫폼입니다. 시간표 자동 편성, 선배-후배 매칭, 커리어 트랙 추천 등을 통해 학생들이 자신만의 학습 경로를 효율적으로 설계할 수 있도록 돕습니다.
+**Kourse**는 정보대 학생들을 위한 통합 학습 관리 플랫폼입니다. "무엇을 들어야 할까?", "이 과목을 들은 선배는 어떻게 활용했을까?", "나의 진로 방향은?"이라는 세 가지 핵심 질문에 답하며, 4년의 대학 생활을 체계적으로 설계할 수 있도록 돕습니다.
+
+### 🎓 타겟 사용자
+
+**고려대학교 정보대학 학생** (1차 목표)
+- 컴퓨터학과, 데이터과학과, 사이버국방학과
+- 정보대 복수전공/이중전공 학생
+- 향후 전체 단과대로 확장 예정
 
 ### 🌟 핵심 가치
 
-- **개인화된 학습 경험**: 각 학생의 이수 현황과 관심 분야에 맞춘 맞춤형 추천
-- **시간 절약**: 시간표 자동 편성으로 복잡한 수강신청 과정 간소화
-- **지식 공유**: 같은 과목을 이수한 선배와의 연결을 통한 실전 경험 공유
-- **커리어 가이드**: AI/ML, Backend 등 트랙별 로드맵 제공
+- **익명이 아닌 검증된 조언**: 실제 과목 이수자와의 연결로 신뢰할 수 있는 정보 제공
+- **4학년의 후회를 2학년에**: 진로별 이수체계도 기반 사전 로드맵 제시
+- **교육과 소통의 선순환**: 학년이 아닌 과목 중심으로 서로가 서로에게 도움을
+- **고려대 이수체계도 기반**: 실제 커리큘럼을 반영한 맞춤형 트랙 추천
 
 ---
 
 ## 🚀 주요 기능
 
-### 1️⃣ 시간표 자동화 (Schedule)
-- 이수 과목 기반 수강 가능 과목 자동 필터링
-- 선호 요일/시간, 이동 시간, 전공 우선순위 고려
-- 실시간 시간표 시각화 및 편집 기능
-- 시간 충돌 방지 및 최적 스케줄 제안
+### 💡 해결하는 문제
 
-### 2️⃣ 선배-후배 매칭 (Mentor/Connections)
-- 같은 과목 이수자 연결 시스템
-- 실시간 채팅 기능
-- 수업 후기 및 팁 공유
-- 크로스 메이저 학습 네트워크 구축
+#### 1. "수강신청 뭐 담지?"
+전공필수? 전공선택? 교양? 명강? 우선순위를 모르는 학생들을 위해
+- **AI 기반 시간표 자동 생성**: 사용자 프롬프트로 의사 파악 → 과목별 가중치 부여 → 최적 10개 추천
+- **선수과목 자동 필터링**: 이미 이수한 과목 기반으로 수강 가능한 과목만 제시
+- **선호도 반영**: 요일, 시간대, 이동시간, 전공 우선순위 고려
 
-### 3️⃣ 커리어 로드맵 (Career)
-- **Dashboard**: 학점 및 이수 현황 시각화
-- **트랙 추천**: AI/ML, Backend, Frontend 등 커리어 경로 제안
-- **로드맵**: 학기별 추천 과목 및 선수과목 관리
-- **다음 학기 추천**: 현재 진도에 맞는 최적 과목 제안
+#### 2. "이 과목을 들은 사람은 어떻게 활용했을까?"
+KLUE는 강의 평가에 불과, 실전 활용법은 사람에게 직접 물어야
+- **선수강자 매칭 시스템**: 같은 과목을 이수한 선배와 자동 연결
+- **과목 중심 네트워크**: 학년이 아닌 과목으로 연결되는 멘토-멘티 관계
+- **실시간 1:1 채팅**: 알고리즘 들었으면 코테 준비? 실전 조언 즉시 공유
+- **검증된 정보**: 익명이 아닌, 실제 이수자의 경험담
 
-### 4️⃣ 마이페이지 (MyPage)
-- 프로필 관리
-- 수강 선호도 설정
-- 학습 통계 확인
-- 앱 설정 (테마, 알림, 언어 등)
+#### 3. "학점은 채웠는데, 방향성이 없어"
+전필·전선 따라 듣다 보니 학점만 채우고 나의 커리어는?
+- **이수체계도 기반 진로 추천**: 고려대 컴퓨터학과 이수체계도 활용
+- **트랙별 로드맵**: AI/ML, Backend, Frontend, Data Science 등
+- **이수율 측정**: 선택한 트랙 대비 현재 진행도 시각화
+- **타전공 연계 추천**: 복수전공 시 최적 과목 조합 제안
+- **다음 학기 추천**: "이거 공부할 거면 이 과목 들을 걸" 사전 제시
 
-### 5️⃣ 채팅 시스템 (Chat)
-- 선배-후배 간 1:1 채팅
+### 📱 기능별 상세
+
+#### 1️⃣ 시간표 자동화 (Schedule)
+- 사용자 프롬프트 기반 의사 측정 ("공강 많이", "전공 집중", "교양 먼저")
+- Gemini Flash 2.5를 활용한 가중치 계산
+- 가중치 기반 랜덤 추출 방식으로 10개 과목 추천
+- 시간표 시각화 및 실시간 편집
+
+#### 2️⃣ 선배-후배 매칭 (Mentor/Connections)
+- 과목 코드 기반 자동 매칭
+- 애플리케이션 내장 채팅 서비스
+- 선배의 수강 후기, 프로젝트 경험, 취업 활용 사례 공유
+- Cross Major Connections: 타전공 학습 네트워크
+
+#### 3️⃣ 커리어 로드맵 (Career)
+- **Dashboard**: 전공필수/선택 이수율, 학점 현황 시각화
+- **트랙 추천**: 이수 과목 패턴 분석 → 최적 커리어 경로 제안
+- **Roadmap**: 학기별 추천 과목, 선수과목 체크, 난이도 표시
+- **다음 과목 추천**: 현재 트랙 기반 후속 과목 자동 제안
+
+#### 4️⃣ 마이페이지 (MyPage)
+- 프로필 및 이수 과목 관리
+- 수강 선호도 설정 (시간표 자동화에 반영)
+- 학습 통계 및 진도율 확인
+- 앱 설정 (테마, 알림, 언어)
+
+#### 5️⃣ 채팅 시스템 (Chat)
+- 선배-후배 간 1:1 실시간 채팅
 - 채팅방 목록 관리
-- 실시간 메시지 알림
+- 과목별 대화 내역 저장
+
+---
+
+## 🎯 경쟁 우위
+
+### 기존 서비스와의 차별점
+
+| 서비스 | 제공 가치 | 한계 | Kourse의 해결 |
+|-------|---------|-----|-------------|
+| **수강신청 알리미<br/>(고파스)** | 학수번호 복사,<br/>경쟁률 제공 | 의사 반영 위해<br/>결국 시트 정리 필수 | ✅ AI 프롬프트 기반<br/>자동 시간표 생성 |
+| **Klue** | 선수강자 강의 후기 | 진로 도움 여부는<br/>미지수 | ✅ 실전 활용법 중심<br/>멘토링 매칭 |
+| **에브리타임** | 최대 커뮤니티<br/>(MAU 400만) | 익명성으로 인한<br/>낮은 신뢰성 | ✅ 검증된 이수자와<br/>1:1 연결 |
+
+### 우리만의 가치
+
+1. **"이거 공부할 거면 이 과목 들을 걸" → 4학년의 후회를 2학년에**
+   - 고려대 이수체계도 기반 사전 로드맵 제시
+   - 트랙별 최적 이수 경로 추천
+
+2. **익명이 아닌 검증된 조언**
+   - 실제 과목 이수자만 매칭
+   - KLUE로는 알 수 없는 "과목을 어떻게 활용했는지" 직접 질문
+
+3. **교육과 소통의 선순환**
+   - 후배는 선배에게 배우고, 선배는 후배에게 보은
+   - 학년이 아닌 과목 중심 네트워크
 
 ---
 
 ## 🛠️ 기술 스택
 
-### Frontend
-- **React 18.2.0** - UI 라이브러리
-- **TypeScript 5.9.3** - 타입 안정성
-- **Vite 5.0.8** - 빌드 도구 및 개발 서버
-- **React Router DOM 7.9.6** - 클라이언트 사이드 라우팅
-
-### 스타일링
+### Frontend (이 저장소)
+- **React 18.2.0** - 반응형 UI 라이브러리
+- **TypeScript 5.9.3** - 타입 안정성 및 개발 생산성
+- **Vite 5.0.8** - 고속 빌드 도구 및 개발 서버
+- **React Router DOM 7.9.6** - SPA 라우팅
 - **Tailwind CSS 3.4.18** - 유틸리티 우선 CSS 프레임워크
-- **PostCSS 8.5.6** - CSS 전처리
-- **Pretendard Font** - 한글 웹폰트
-
-### 상태 관리 & API
-- **Zustand 5.0.8** - 경량 상태 관리
+- **Zustand 5.0.8** - 경량 상태 관리 라이브러리
 - **Axios 1.13.2** - HTTP 클라이언트
 - **React Flow Renderer 10.3.17** - 로드맵 시각화
 
-### 개발 도구
-- **ESLint** - 코드 품질 관리
-- **Prettier** - 코드 포맷팅
+### Backend
+- **Kotlin + Spring Boot 3.5.4** - 백엔드 서버
+- **PostgreSQL** - 관계형 데이터베이스
+- **WebSocket** - 실시간 채팅 지원
+
+### AI & 데이터
+- **Gemini Flash 2.5** - 사용자 프롬프트 분석 및 가중치 계산
+- **고려대 이수체계도 데이터** - 진로 트랙 추천 기반
 
 ---
 
@@ -123,8 +178,8 @@ npm install
 # 4. 개발 서버 실행
 npm run dev
 
-# 5. 브라우저에서 <http://localhost:5173> 접속
-````
+# 5. 브라우저에서 http://localhost:5173 접속
+```
 
 ### 빌드
 
@@ -196,49 +251,45 @@ webapp/
 
 ### Career 모듈
 
-| 컴포넌트                      | 역할                | 주요 데이터                                            |
-| ------------------------- | ----------------- | ------------------------------------------------- |
-| **Dashboard**             | 학점·이수 현황 요약       | `completedCourses`                                |
-| **CareerRecommendation**  | 트랙 추천 및 선택        | `tracks`, `selectedTrack`                         |
-| **Roadmap**               | 학기별 로드맵, 다음 과목 추천 | `allCourses`, `selectedTrack`, `completedCourses` |
-| **Connections**           | 선수 수강자 매칭         | `studentConnections`                              |
-| **CrossMajorConnections** | 타전공 학습 네트워크       | 크로스 메이저 데이터                                       |
-| **CourseModal**           | 과목 상세 정보 모달       | 과목 상세 데이터                                         |
+| 컴포넌트 | 역할 | 주요 데이터 |
+|---------|------|------------|
+| **Dashboard** | 학점·이수 현황 요약 | `completedCourses` |
+| **CareerRecommendation** | 트랙 추천 및 선택 | `tracks`, `selectedTrack` |
+| **Roadmap** | 학기별 로드맵, 다음 과목 추천 | `allCourses`, `selectedTrack`, `completedCourses` |
+| **Connections** | 선수 수강자 매칭 | `studentConnections` |
+| **CrossMajorConnections** | 타전공 학습 네트워크 | 크로스 메이저 데이터 |
+| **CourseModal** | 과목 상세 정보 모달 | 과목 상세 데이터 |
 
 ### Navigation
 
 - **BottomNav**: 하단 네비게이션 바
-    - Schedule (시간표)
-    - Mentor (멘토)
-    - Career (커리어)
-    - MyPage (마이페이지)
+  - Schedule (시간표)
+  - Mentor (멘토)
+  - Career (커리어)
+  - MyPage (마이페이지)
 
 ---
 
 ## 🔌 API 연동
 
 ### Base URL
-
 - 개발 환경: `/api` → Proxy to `http://inthon.fjey.me:8080`
 
 ### 주요 엔드포인트
 
 #### 인증
-
 ```typescript
 POST /login          // 로그인
 POST /register       // 회원가입
 ```
 
 #### 시간표
-
 ```typescript
 GET  /api/schedule/recommend      // 시간표 자동화 결과
 POST /api/course-preferences      // 사용자 제약 조건 저장
 ```
 
 #### Career
-
 ```typescript
 GET /api/courses/:id/connections  // 같은 과목 학우 목록
 GET /api/tracks/recommend         // 진로 트랙 추천
@@ -275,7 +326,6 @@ export default instance;
 ### Zustand Stores
 
 #### 1. authStore
-
 ```typescript
 interface AuthState {
   isLoggedIn: boolean;
@@ -287,7 +337,6 @@ interface AuthState {
 ```
 
 #### 2. careerStore
-
 ```typescript
 interface CareerState {
   completedCourses: Course[];
@@ -300,7 +349,6 @@ interface CareerState {
 ```
 
 #### 3. themeStore
-
 ```typescript
 interface ThemeState {
   theme: 'light' | 'dark' | 'system';
@@ -311,8 +359,22 @@ interface ThemeState {
 
 ---
 
-#### 컴포넌트 구조
+## 👨‍💻 개발 가이드
 
+### 브랜치 전략
+
+- `main` - 프로덕션 브랜치
+- `pro1`, `pro2`, `pro3` - 주요 기능 브랜치
+- `genspark_ai_developer` - AI 개발 전용 브랜치
+
+### 코드 컨벤션
+
+#### 파일 명명 규칙
+- **컴포넌트**: PascalCase (예: `Dashboard.tsx`)
+- **유틸리티/Helper**: camelCase (예: `formatDate.ts`)
+- **Store**: camelCase + Store suffix (예: `authStore.ts`)
+
+#### 컴포넌트 구조
 ```jsx
 // 1. Import
 import { useState } from 'react';
@@ -326,10 +388,10 @@ interface Props {
 function Component({ title }: Props) {
   // 3-1. Hooks
   const [state, setState] = useState();
-
+  
   // 3-2. Handlers
   const handleClick = () => {};
-
+  
   // 3-3. Render
   return <div>{title}</div>;
 }
@@ -338,20 +400,11 @@ function Component({ title }: Props) {
 export default Component;
 ```
 
-타일링 가이드
-
-```
-<div className="w-full sm:w-1/2 lg:w-1/3">
-  {/* 모바일: 100%, 태블릿: 50%, 데스크톱: 33.33% */}
-</div>
-```
-
-
+---
 
 ## 🚢 배포
 
 ### 프로덕션 빌드
-
 ```bash
 npm run build
 ```
@@ -366,59 +419,90 @@ npm run build
 VITE_API_BASE_URL=https://api.yourdomain.com
 ```
 
+### 서버 배포 옵션
+
+#### 1. Vercel
+```bash
+npm install -g vercel
+vercel --prod
+```
+
+#### 2. Netlify
+```bash
+npm install -g netlify-cli
+netlify deploy --prod
+```
+
+#### 3. GitHub Pages
+```bash
+# vite.config.js에 base 추가
+export default defineConfig({
+  base: '/repository-name/',
+  // ...
+});
+
+npm run build
+# dist 폴더를 gh-pages 브랜치에 배포
+```
+
+---
 
 ## 🔧 트러블슈팅
 
 ### 흔한 문제들
 
 #### 1. API 연결 실패
-
 ```
 Error: Network Error
 ```
-
 **해결**: `vite.config.js`의 proxy 설정 확인
 
 #### 2. 타입 에러
-
 ```
 TS2307: Cannot find module
 ```
-
 **해결**: `tsconfig.json`의 paths 설정 확인 또는 `npm install` 재실행
 
 #### 3. 빌드 에러
-
 ```
 RollupError: Could not resolve
 ```
-
 **해결**: `node_modules` 삭제 후 재설치
 
 ---
 
 ## 📊 사용자 시나리오
 
-### 전형적인 사용 흐름
+### 정보대 2학년 김민수 학생의 하루
 
-1. **회원가입/로그인**
-    
-    - Home 페이지에서 계정 생성 또는 로그인
-2. **프로필 설정**
-    
-    - MyPage에서 시간표 제약 조건 입력
-    - 선호 요일/시간, 전공 우선순위 설정
-3. **시간표 생성**
-    
-    - Schedule 페이지에서 자동 추천 확인
-    - 과목 추가/삭제로 시간표 커스터마이징
-4. **선배 매칭**
-    
-    - Mentor 페이지에서 관심 과목 검색
-    - 해당 과목 이수 선배와 채팅 연결
-5. **커리어 로드맵 확인**
-    
-    - Career 페이지에서 트랙 선택
-    - 학기별 추천 과목 확인 및 계획 수립
+#### 🕐 아침 9시: 수강신청 고민 시작
+"다음 학기에 뭘 들어야 하지? 알고리즘? 데이터베이스? 공강은 어떻게 만들지?"
 
----
+**[Kourse 솔루션]**
+1. Schedule 페이지 접속
+2. "전공 집중하고 싶고, 수요일은 공강으로 만들고 싶어요" 입력
+3. AI가 10개 최적 과목 추천 (가중치 기반)
+4. 클릭 몇 번으로 시간표 완성 ✅
+
+#### 🕐 오후 2시: 알고리즘 수강 결정
+"알고리즘 들으면 코테 준비가 될까? 실제로 들은 사람한테 물어보고 싶은데..."
+
+**[Kourse 솔루션]**
+1. Mentor 페이지에서 "알고리즘" 검색
+2. 이미 이수한 선배 3명 자동 매칭
+3. 3학년 박선배와 채팅 연결
+4. "코테 3문제 풀 정도 실력 늘었어요" 실전 조언 획득 ✅
+
+#### 🕐 저녁 7시: 진로 고민
+"나 AI 쪽으로 가고 싶은데, 어떤 과목들을 들어야 하지?"
+
+**[Kourse 솔루션]**
+1. Career 페이지에서 "AI/ML" 트랙 선택
+2. 이수체계도 기반 로드맵 확인
+3. 현재 이수율 42% 표시
+4. 다음 학기 추천: "머신러닝", "딥러닝" 자동 제안
+5. 4년 계획 한눈에 파악 ✅
+
+### 결과
+❌ 기존: 3일간 고민 + 에타 검색 + 선배 찾기 + 엑셀 정리
+✅ Kourse: 1시간 내 의사결정 완료 + 검증된 정보 획득 + 4년 계획 수립
