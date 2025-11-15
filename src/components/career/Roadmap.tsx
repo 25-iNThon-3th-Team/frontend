@@ -319,21 +319,6 @@ function Roadmap() {
           </div>
         )}
       </div>
-
-      <div className="space-y-2">
-        <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-          <span className="font-medium text-gray-700 dark:text-gray-300">현재 학기 기준</span>
-          {focusSemesters[1] !== undefined && focusSemesters[1] !== currentSemester && (
-            <>
-              <span>·</span>
-              <span>다음 학기</span>
-            </>
-          )}
-        </div>
-        {focusSemesters.map((semesterNumber, index) =>
-          renderSemesterSection(semesterNumber, index === 0 ? 'current' : 'next')
-        )}
-      </div>
     </div>
   );
 
@@ -352,24 +337,6 @@ function Roadmap() {
         ) : (
           renderFocusView()
         )}
-
-        {/* Legend */}
-        <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700">
-          <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 bg-gradient-to-br from-indigo-50 to-blue-50 dark:!from-gray-800 dark:!to-gray-700 border border-indigo-300 dark:border-gray-600 rounded"></div>
-              <span>이수 완료</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 bg-white dark:bg-gray-700 border border-indigo-200 dark:border-indigo-700 rounded"></div>
-              <span>수강 가능</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded opacity-60"></div>
-              <span>선수과목 필요</span>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Course Modal */}
