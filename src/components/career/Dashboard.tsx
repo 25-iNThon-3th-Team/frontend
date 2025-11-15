@@ -17,8 +17,8 @@ function Dashboard() {
       <div className="space-y-3">
         {/* Total Credits */}
         <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-lg p-3.5 border border-indigo-200">
-          <div className="text-xs text-indigo-600 mb-0.5">총 이수 학점</div>
-          <div className="text-2xl font-semibold text-indigo-700">{totalCredits}<span className="text-base text-indigo-600 ml-1">학점</span></div>
+          <div className="text-xs text-indigo-600 mb-0.5">총 이수학점 / 졸업 요구 학점</div>
+          <div className="text-2xl font-semibold text-indigo-700">34 <span className="text-base text-indigo-500">/</span> 130<span className="text-base text-indigo-600 ml-1">학점</span></div>
         </div>
 
         {/* Course Breakdown */}
