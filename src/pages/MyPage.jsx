@@ -38,42 +38,57 @@ function MyPage() {
 
   const handleSave = async () => {
     try {
-      const response = await fetch("/api/users/me", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          grade: profile.grade || 0,
-          semester: profile.semester || 0,
-          majorCode: profile.major,
-          creditsMajorRequired: profile.creditsMajorRequired || 0,
-          creditsMajorElective: profile.creditsMajorElective || 0,
-          creditsGeneral: profile.creditsGeneral || 0,
-          preferredOffDays: profile.preferredOffDays || [],
-          preferredTimeSlot: profile.preferredTimeSlot || "",
-          maxTransferMinutes: profile.maxTransferMinutes || 0,
-          priorityOrder: profile.priorityOrder || [],
-        }),
+      const response = await axios.put("/api/users/me", {
+        grade: profile.grade || 0,
+        semester: profile.semester || 0,
+        majorCode: profile.major || "",
+        creditsMajorRequired: profile.creditsMajorRequired || 0,
+        creditsMajorElective: profile.creditsMajorElective || 0,
+        creditsGeneral: profile.creditsGeneral || 0,
+        preferredOffDays: coursePreference.preferredOffDays || [],
+        preferredTimeSlot: coursePreference.preferredTimeSlot || "",
+        maxTransferMinutes: coursePreference.maxTransferMinutes || 0,
+        priorityOrder: coursePreference.priorityOrder || [],
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        console.log("프로필 저장 성공:", data);
-        setIsEditing(false);
-        alert("프로필이 저장되었습니다!");
-      } else {
-        console.error("프로필 저장 실패:", response.status);
-        alert("프로필 저장에 실패했습니다.");
-      }
+      console.log("프로필 저장 성공:", response.data);
+      console.log("상태 코드:", response.status);
+      setIsEditing(false);
+      alert("프로필이 저장되었습니다!");
     } catch (error) {
-      console.error("API 호출 에러:", error);
-      alert("프로필 저장 중 오류가 발생했습니다.");
+      console.error("프로필 저장 에러:", error);
+      alert("프로필 저장에 실패했습니다.");
     }
   };
 
   const handleInputChange = (field, value) => {
     setProfile({ ...profile, [field]: value });
+  };
+
+  const handleLogin = async () => {
+    try {
+      const response = await axios.post("/login", {
+        username: "admin",
+        password: "admin123",
+      });
+      console.log("=== 로그인 응답 상세 ===");
+      console.log("상태 코드:", response.status);
+      console.log("응답 데이터:", response.data);
+      console.log("응답 헤더:", response.headers);
+      console.log("Set-Cookie 헤더:", response.headers["set-cookie"]);
+
+      // 토큰이 응답에 포함되어 있으면 저장
+      if (response.data.token) {
+        console.log("토큰 저장:", response.data.token);
+        localStorage.setItem("token", response.data.token);
+      }
+
+      alert("로그인 성공!");
+    } catch (error) {
+      console.error("로그인 에러:", error);
+      console.error("에러 응답:", error.response);
+      alert("로그인 실패");
+    }
   };
 
   const handleLogout = async () => {
@@ -188,6 +203,41 @@ function MyPage() {
     });
   }, [profile.completedCredits, profile.totalCredits]);
 
+  // 사용자 데이터 로드
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const response = await axios.get("http://inthon.fjey.me:8080/api/users/me");
+        const userData = response.data;
+
+        setProfile({
+          ...profile, // Keep existing profile data like name, email, studentId if not provided by API
+          name: userData.username || profile.name, // Assuming username can be used as name
+          email: userData.email || profile.email, // Assuming email is available
+          studentId: userData.studentId || profile.studentId, // Assuming studentId is available
+          major: userData.majorCode || profile.major,
+          grade: userData.grade || profile.grade,
+          semester: userData.semester || profile.semester,
+          creditsMajorRequired: userData.creditsMajorRequired || profile.creditsMajorRequired,
+          creditsMajorElective: userData.creditsMajorElective || profile.creditsMajorElective,
+          creditsGeneral: userData.creditsGeneral || profile.creditsGeneral,
+        });
+
+        setCoursePreference({
+          preferredOffDays: userData.preferredOffDays || coursePreference.preferredOffDays,
+          preferredTimeSlot: userData.preferredTimeSlot || coursePreference.preferredTimeSlot,
+          maxTransferMinutes: userData.maxTransferMinutes || coursePreference.maxTransferMinutes,
+          priorityOrder: userData.priorityOrder || coursePreference.priorityOrder,
+        });
+      } catch (error) {
+        console.error("사용자 데이터 로드 에러:", error);
+        // Optionally, handle error by setting default values or showing a message
+      }
+    };
+
+    fetchUserData();
+  }, []); // Empty dependency array means this effect runs once on mount
+
   return (
     <div className="page-container">
       <div className="page-content">
@@ -241,7 +291,7 @@ function MyPage() {
                   {profile.grade >= 5 ? "5학년 이상" : `${profile.grade}학년`}{" "}
                   {profile.semester}학기
                 </p>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap justify-center">
                   <button
                     onClick={handleEditToggle}
                     className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-blue-600 text-white text-sm rounded-lg hover:from-indigo-700 hover:to-blue-700 transition-all font-medium"
@@ -253,6 +303,12 @@ function MyPage() {
                     className="px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 transition-colors font-medium"
                   >
                     로그아웃
+                  </button>
+                  <button
+                    onClick={handleLogin}
+                    className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors font-medium"
+                  >
+                    로그인 테스트
                   </button>
                 </div>
               </>

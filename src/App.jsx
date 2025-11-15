@@ -1,4 +1,6 @@
 import { Routes, Route, useLocation } from "react-router-dom";
+import { useEffect } from "react";
+import useAuthStore from "./store/authStore";
 import BottomNav from "./components/BottomNav";
 import Schedule from "./pages/Schedule";
 import Mentor from "./pages/Mentor";
@@ -22,6 +24,12 @@ import "./App.css";
 
 function App() {
   const location = useLocation();
+  const { checkLogin } = useAuthStore();
+
+  useEffect(() => {
+    checkLogin();
+  }, [checkLogin]);
+
   const isChatPage =
     location.pathname.startsWith("/chat/") &&
     !location.pathname.startsWith("/chatlist");
@@ -40,7 +48,10 @@ function App() {
         <Route path="/change-password" element={<ChangePassword />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/chat/:seniorId" element={<Chat />} />
-        <Route path="/settings/notifications" element={<NotificationSettings />} />
+        <Route
+          path="/settings/notifications"
+          element={<NotificationSettings />}
+        />
         <Route path="/settings/privacy" element={<PrivacySettings />} />
         <Route path="/settings/language" element={<LanguageSettings />} />
         <Route path="/settings/theme" element={<ThemeSettings />} />
