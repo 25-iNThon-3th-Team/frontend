@@ -608,6 +608,14 @@
   gap: 8px;
 }
 
+.chat-item-name-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
 .chat-item-name {
   font-size: 1rem;
   font-weight: 700;
@@ -682,6 +690,31 @@
   border: 1px solid #e0e7ff;
 }
 
+/* 선배/후배 배지 스타일 */
+.role-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.role-badge-senior {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  color: #92400e;
+  border: 1px solid #fcd34d;
+}
+
+.role-badge-junior {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1e40af;
+  border: 1px solid #93c5fd;
+}
+
 /* 채팅 페이지 스타일 */
 .chat-container {
   width: 100%;
@@ -737,6 +770,13 @@
   min-width: 0;
 }
 
+.chat-header-name-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .chat-header-name {
   font-size: 1rem;
   font-weight: 700;
@@ -760,6 +800,28 @@
   flex-direction: column;
   gap: 12px;
   -webkit-overflow-scrolling: touch;
+}
+
+.chat-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.chat-empty-text {
+  font-size: 1rem;
+  color: #718096;
+  margin: 0 0 8px 0;
+}
+
+.chat-empty-hint {
+  font-size: 0.85rem;
+  color: #a0aec0;
+  margin: 0;
 }
 
 .chat-message {

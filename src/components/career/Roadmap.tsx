@@ -1,16 +1,27 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useCareerStore } from '../../store/careerStore';
 import { Course } from '../../types/career';
 import CourseModal from './CourseModal';
 
 function Roadmap() {
-  const { selectedTrack, allCourses, completedCourses, getCompletedCourseIds } = useCareerStore();
+  const { selectedTrack, allCourses, completedCourses } = useCareerStore();
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [semesterGroups, setSemesterGroups] = useState<{ [key: string]: Course[] }>({});
   const [expandedSemesters, setExpandedSemesters] = useState<Set<number>>(new Set([1])); // 기본적으로 1학기만 펼침
+  const [currentSemester, setCurrentSemester] = useState(1);
 
-  const completedCourseIds = getCompletedCourseIds();
+  const completedCourseIds = useMemo(
+    () => completedCourses.map((course) => course.courseId),
+    [completedCourses]
+  );
+
+  const focusSemesters = useMemo(() => {
+    const nextSemester = Math.min(8, currentSemester + 1);
+    return Array.from(new Set([currentSemester, nextSemester])).filter(
+      (semester) => semester >= 1 && semester <= 8
+    );
+  }, [currentSemester]);
 
   useEffect(() => {
     if (allCourses.length === 0) {
@@ -44,7 +55,38 @@ function Roadmap() {
     });
 
     setSemesterGroups(groups);
-  }, [allCourses, completedCourses.length]); // completedCourses.length를 dependency로 사용하여 배열 내용 변경 감지
+
+    const completedSemesters = completedCourses
+      .map((completedCourse) => {
+        const matched = allCourses.find((course) => course.courseId === completedCourse.courseId);
+        return matched?.semester ?? 0;
+      })
+      .filter((semester) => typeof semester === 'number' && semester > 0);
+
+    const latestCompletedSemester = completedSemesters.length > 0 ? Math.max(...completedSemesters) : 0;
+    const inferredSemester = Math.min(8, Math.max(1, latestCompletedSemester + 1));
+
+    setCurrentSemester(inferredSemester);
+    setExpandedSemesters(new Set([inferredSemester, Math.min(8, inferredSemester + 1)]));
+  }, [allCourses, completedCourses]); // completedCourses를 dependency로 사용하여 변경 감지
+
+  const focusRecommendations = useMemo(() => {
+    const focusCourses = focusSemesters.flatMap((semesterNumber) => {
+      const semesterKey = `${semesterNumber}학기`;
+      return semesterGroups[semesterKey] || [];
+    });
+
+    return focusCourses
+      .filter((course) => {
+        if (completedCourseIds.includes(course.courseId)) {
+          return false;
+        }
+        const completedPrereqs = course.prerequisites.filter((id) => completedCourseIds.includes(id));
+        return completedPrereqs.length === course.prerequisites.length;
+      })
+      .sort((a, b) => b.difficulty - a.difficulty)
+      .slice(0, 4);
+  }, [completedCourseIds, focusSemesters, semesterGroups]);
 
   const handleCourseClick = (course: Course) => {
     setSelectedCourse(course);
@@ -68,172 +110,248 @@ function Roadmap() {
     });
   };
 
+  const renderSemesterSection = (semesterNum: number, variant?: 'current' | 'next') => {
+    const semester = `${semesterNum}학기`;
+    const courses = semesterGroups[semester] || [];
+    const isExpanded = expandedSemesters.has(semesterNum);
+    const completedCount = courses.filter(c => completedCourseIds.includes(c.courseId)).length;
+    const title = variant === 'current' ? '현재 학기' : variant === 'next' ? '다음 학기' : semester;
+    const baseInfo = courses.length > 0 ? `${courses.length}개 과목` : '과목 없음';
+    const subtitle =
+      variant === 'current' || variant === 'next'
+        ? `${semesterNum}학기 · ${baseInfo}`
+        : baseInfo;
+
+    return (
+      <div key={semester} className="border border-indigo-200 rounded-lg overflow-hidden mb-2">
+        {/* Semester Header - Toggle Button */}
+        <button
+          onClick={() => toggleSemester(semesterNum)}
+          className="w-full flex items-center justify-between p-3 bg-gradient-to-r from-indigo-50 to-blue-50 hover:from-indigo-100 hover:to-blue-100 transition-colors border-b border-indigo-200"
+        >
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 bg-gradient-to-br from-indigo-600 to-blue-600 text-white rounded flex items-center justify-center font-semibold text-xs">
+              {semesterNum}
+            </div>
+            <div className="text-left">
+              <h3 className="font-semibold text-gray-900 text-sm">{title}</h3>
+              <div className="text-xs text-gray-600 mt-0.5">
+                {subtitle} {completedCount > 0 && `· ${completedCount}개 완료`}
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center">
+            <svg
+              className={`w-4 h-4 text-indigo-600 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+        </button>
+
+        {/* Courses in this semester - Collapsible */}
+        {isExpanded && (
+        <div className="p-3 space-y-2 bg-white">
+          {courses.map((course) => {
+            const isCompleted = completedCourseIds.includes(course.courseId);
+            const completedPrereqs = course.prerequisites.filter(id => 
+              completedCourseIds.includes(id)
+            );
+            const hasPrerequisites = course.prerequisites.length > 0;
+
+            return (
+              <div key={course.courseId}>
+                {/* Course Card */}
+                <button
+                  onClick={() => handleCourseClick(course)}
+                  className={`w-full text-left p-3 rounded-lg border transition-all active:scale-[0.99] ${
+                    isCompleted
+                      ? 'bg-gradient-to-r from-indigo-50 to-blue-50 border-indigo-300'
+                      : completedPrereqs.length === course.prerequisites.length
+                      ? 'bg-white border-indigo-200 hover:border-indigo-400 hover:bg-indigo-50'
+                      : 'bg-gray-50 border-gray-200 opacity-70'
+                  }`}
+                >
+                  <div className="flex items-start justify-between mb-1.5">
+                    <div className="flex-1">
+                      <div className="font-medium text-sm text-gray-900 mb-0.5">
+                        {course.name}
+                      </div>
+                      <div className="text-xs text-gray-500">{course.courseId}</div>
+                    </div>
+                    {isCompleted && (
+                      <div className="ml-2 text-gray-600">
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Course Info */}
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 mb-2">
+                    <span>{course.credits}학점</span>
+                    <span>·</span>
+                    <span>{course.professor}</span>
+                    <span>·</span>
+                    <span className={`px-1.5 py-0.5 rounded border ${
+                      course.type === '전필' ? 'bg-white border-gray-300 text-gray-700' :
+                      course.type === '전선' ? 'bg-white border-gray-300 text-gray-700' :
+                      'bg-white border-gray-300 text-gray-700'
+                    }`}>
+                      {course.type}
+                    </span>
+                  </div>
+
+                  {/* Difficulty & Workload */}
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-gray-500">난이도</span>
+                      <div className="flex gap-0.5">
+                        {[...Array(5)].map((_, i) => (
+                          <div
+                            key={i}
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              i < course.difficulty ? 'bg-gray-700' : 'bg-gray-300'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-gray-500">작업량</span>
+                      <div className="flex gap-0.5">
+                        {[...Array(5)].map((_, i) => (
+                          <div
+                            key={i}
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              i < course.workload ? 'bg-gray-700' : 'bg-gray-300'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Prerequisites */}
+                  {hasPrerequisites && (
+                    <div className="mt-1.5 pt-1.5 border-t border-gray-200">
+                      <div className="text-xs text-gray-500 mb-1">선수과목</div>
+                      <div className="flex flex-wrap gap-1">
+                        {course.prerequisites.map((prereqId) => {
+                          const isPrereqCompleted = completedCourseIds.includes(prereqId);
+                          return (
+                            <span
+                              key={prereqId}
+                              className={`px-1.5 py-0.5 rounded text-xs border ${
+                                isPrereqCompleted
+                                  ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
+                                  : 'bg-white border-indigo-200 text-indigo-600'
+                              }`}
+                            >
+                              {prereqId}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderFocusView = () => (
+    <div className="space-y-4">
+      <div className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-blue-50 p-4">
+        <div className="flex flex-col gap-1 mb-3">
+          <span className="text-xs font-semibold uppercase tracking-wide text-indigo-600">지금 집중하면 좋은 과목</span>
+          <p className="text-sm text-indigo-900">
+            현재 학기를 기준으로 바로 수강할 수 있는 핵심 과목을 추천해 드려요.
+          </p>
+        </div>
+
+        {focusRecommendations.length > 0 ? (
+          <div className="grid gap-2 md:grid-cols-2">
+            {focusRecommendations.map((course) => (
+              <button
+                key={course.courseId}
+                onClick={() => handleCourseClick(course)}
+                className="w-full rounded-xl border border-indigo-200 bg-white/80 p-3 text-left shadow-sm transition hover:border-indigo-400 hover:bg-white"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <div className="text-sm font-semibold text-gray-900">{course.name}</div>
+                    <div className="text-xs text-gray-500 mt-0.5">{course.courseId}</div>
+                  </div>
+                  <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-600">추천</span>
+                </div>
+                <div className="mt-3 flex items-center gap-2 text-xs text-gray-600">
+                  <span>{course.credits}학점</span>
+                  <span>·</span>
+                  <span>{course.type}</span>
+                  {course.prerequisites.length > 0 ? (
+                    <>
+                      <span>·</span>
+                      <span className="text-indigo-600">선수과목 충족 완료</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>·</span>
+                      <span className="text-indigo-600">기초 과목</span>
+                    </>
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-xl border border-dashed border-indigo-200 bg-white/80 p-4 text-sm text-indigo-800">
+            아직 바로 들을 수 있는 추천 과목이 없어요. 필요한 선수과목을 조금만 더 채워보세요!
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
+          <span className="font-medium text-gray-700">현재 학기 기준</span>
+          {focusSemesters[1] !== undefined && focusSemesters[1] !== currentSemester && (
+            <>
+              <span>·</span>
+              <span>다음 학기</span>
+            </>
+          )}
+        </div>
+        {focusSemesters.map((semesterNumber, index) =>
+          renderSemesterSection(semesterNumber, index === 0 ? 'current' : 'next')
+        )}
+      </div>
+    </div>
+  );
 
   return (
     <>
       <div className="bg-white rounded-lg p-4 mb-3 border border-gray-100">
-        <h2 className="text-base font-semibold text-gray-900 mb-3">학습 로드맵</h2>
-        
-        <div className="space-y-3">
-          {Object.keys(semesterGroups).length === 0 ? (
-            <div className="text-center py-8 text-gray-500">과목 정보를 불러오는 중...</div>
-          ) : (
-            // Show all 8 semesters in order
-            Array.from({ length: 8 }, (_, i) => i + 1).map(semesterNum => {
-              const semester = `${semesterNum}학기`;
-              const courses = semesterGroups[semester] || [];
-              
-              const isExpanded = expandedSemesters.has(semesterNum);
-              const completedCount = courses.filter(c => completedCourseIds.includes(c.courseId)).length;
-              
-              return (
-              <div key={semester} className="border border-indigo-200 rounded-lg overflow-hidden mb-2">
-                {/* Semester Header - Toggle Button */}
-                <button
-                  onClick={() => toggleSemester(semesterNum)}
-                  className="w-full flex items-center justify-between p-3 bg-gradient-to-r from-indigo-50 to-blue-50 hover:from-indigo-100 hover:to-blue-100 transition-colors border-b border-indigo-200"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 bg-gradient-to-br from-indigo-600 to-blue-600 text-white rounded flex items-center justify-center font-semibold text-xs">
-                      {semesterNum}
-                    </div>
-                    <div className="text-left">
-                      <h3 className="font-semibold text-gray-900 text-sm">{semester}</h3>
-                      <div className="text-xs text-gray-600 mt-0.5">
-                        {courses.length > 0 ? `${courses.length}개 과목` : '과목 없음'} {completedCount > 0 && `· ${completedCount}개 완료`}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center">
-                    <svg
-                      className={`w-4 h-4 text-indigo-600 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </div>
-                </button>
-
-                {/* Courses in this semester - Collapsible */}
-                {isExpanded && (
-                <div className="p-3 space-y-2 bg-white">
-                  {courses.map((course, index) => {
-                    const isCompleted = completedCourseIds.includes(course.courseId);
-                    const hasPrerequisites = course.prerequisites.length > 0;
-                    const completedPrereqs = course.prerequisites.filter(id => 
-                      completedCourseIds.includes(id)
-                    );
-
-                    return (
-                      <div key={course.courseId}>
-                        {/* Course Card */}
-                        <button
-                          onClick={() => handleCourseClick(course)}
-                          className={`w-full text-left p-3 rounded-lg border transition-all active:scale-[0.99] ${
-                            isCompleted
-                              ? 'bg-gradient-to-r from-indigo-50 to-blue-50 border-indigo-300'
-                              : completedPrereqs.length === course.prerequisites.length
-                              ? 'bg-white border-indigo-200 hover:border-indigo-400 hover:bg-indigo-50'
-                              : 'bg-gray-50 border-gray-200 opacity-70'
-                          }`}
-                        >
-                          <div className="flex items-start justify-between mb-1.5">
-                            <div className="flex-1">
-                              <div className="font-medium text-sm text-gray-900 mb-0.5">
-                                {course.name}
-                              </div>
-                              <div className="text-xs text-gray-500">{course.courseId}</div>
-                            </div>
-                            {isCompleted && (
-                              <div className="ml-2 text-gray-600">
-                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                </svg>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Course Info */}
-                          <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 mb-2">
-                            <span>{course.credits}학점</span>
-                            <span>·</span>
-                            <span>{course.professor}</span>
-                            <span>·</span>
-                            <span className={`px-1.5 py-0.5 rounded border ${
-                              course.type === '전필' ? 'bg-white border-gray-300 text-gray-700' :
-                              course.type === '전선' ? 'bg-white border-gray-300 text-gray-700' :
-                              'bg-white border-gray-300 text-gray-700'
-                            }`}>
-                              {course.type}
-                            </span>
-                          </div>
-
-                          {/* Difficulty & Workload */}
-                          <div className="flex items-center gap-3 mb-2">
-                            <div className="flex items-center gap-1">
-                              <span className="text-xs text-gray-500">난이도</span>
-                              <div className="flex gap-0.5">
-                                {[...Array(5)].map((_, i) => (
-                                  <div
-                                    key={i}
-                                    className={`w-1.5 h-1.5 rounded-full ${
-                                      i < course.difficulty ? 'bg-gray-700' : 'bg-gray-300'
-                                    }`}
-                                  />
-                                ))}
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <span className="text-xs text-gray-500">작업량</span>
-                              <div className="flex gap-0.5">
-                                {[...Array(5)].map((_, i) => (
-                                  <div
-                                    key={i}
-                                    className={`w-1.5 h-1.5 rounded-full ${
-                                      i < course.workload ? 'bg-gray-700' : 'bg-gray-300'
-                                    }`}
-                                  />
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Prerequisites */}
-                          {hasPrerequisites && (
-                            <div className="mt-1.5 pt-1.5 border-t border-gray-200">
-                              <div className="text-xs text-gray-500 mb-1">선수과목</div>
-                              <div className="flex flex-wrap gap-1">
-                                {course.prerequisites.map((prereqId) => {
-                                  const isPrereqCompleted = completedCourseIds.includes(prereqId);
-                                  return (
-                                    <span
-                                      key={prereqId}
-                                      className={`px-1.5 py-0.5 rounded text-xs border ${
-                                        isPrereqCompleted
-                                          ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
-                                          : 'bg-white border-indigo-200 text-indigo-600'
-                                      }`}
-                                    >
-                                      {prereqId}
-                                    </span>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-                )}
-              </div>
-            );
-            }).filter(Boolean)
-          )}
+        <div className="mb-4">
+          <h2 className="text-base font-semibold text-gray-900">학습 로드맵</h2>
+          <p className="text-sm text-gray-500 mt-1">
+            현재 학기와 다음 학기에 바로 집중해야 할 과목만 간결하게 보여드려요.
+          </p>
         </div>
+
+        {Object.keys(semesterGroups).length === 0 ? (
+          <div className="text-center py-8 text-gray-500">과목 정보를 불러오는 중...</div>
+        ) : (
+          renderFocusView()
+        )}
 
         {/* Legend */}
         <div className="mt-4 pt-3 border-t border-gray-100">
