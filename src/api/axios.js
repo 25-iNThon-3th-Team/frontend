@@ -1,7 +1,7 @@
 import axios from "axios";
 
 // 백엔드 API base URL
-const BASE_URL = "http://inthon.fjey.me:8080";
+const BASE_URL = "/api";
 
 // axios 인스턴스 생성
 const axiosInstance = axios.create({

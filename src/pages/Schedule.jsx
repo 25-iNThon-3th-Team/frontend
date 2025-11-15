@@ -84,6 +84,20 @@ const hasTimeConflict = (selectedCourses, candidate) => {
   )
 }
 
+const findConflictingCourses = (selectedCourses, candidate) => {
+  if (!candidate.slots?.length) return []
+
+  return selectedCourses.filter((course) =>
+    course.slots?.some((slot) =>
+      candidate.slots.some(
+        (candidateSlot) =>
+          slot.day === candidateSlot.day &&
+          !(slot.end <= candidateSlot.start || candidateSlot.end <= slot.start)
+      )
+    )
+  )
+}
+
 const shuffleArray = (array) => {
   const cloned = [...array]
   for (let i = cloned.length - 1; i > 0; i -= 1) {
@@ -120,6 +134,28 @@ const getSemesterLabel = (customSemester = null) => {
     // 1-2월은 전년도 2학기
     return `${year - 1}-2`
   }
+}
+
+const generateUniqueLabel = (baseLabel, existingSchedules) => {
+  // 기존 시간표의 label 목록
+  const existingLabels = existingSchedules.map((s) => s.label).filter(Boolean)
+  
+  // 중복이 없으면 그대로 반환
+  if (!existingLabels.includes(baseLabel)) {
+    return baseLabel
+  }
+  
+  // (1) 형식으로 시작
+  let counter = 1
+  let newLabel = `${baseLabel}(${counter})`
+  
+  // (1), (2), (3) 형식으로 계속 증가
+  while (existingLabels.includes(newLabel)) {
+    counter += 1
+    newLabel = `${baseLabel}(${counter})`
+  }
+  
+  return newLabel
 }
 
 const loadSavedSchedules = () => {
@@ -247,8 +283,7 @@ const describeTheme = (themeId) => {
 
 const minutesToClock = (minutes) => {
   const hour = Math.floor(minutes / 60)
-  const minute = minutes % 60
-  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+  return `${hour}`
 }
 
 const computeGridRange = (courses = []) => {
@@ -414,6 +449,7 @@ function Schedule() {
   const [isSemesterSelectOpen, setIsSemesterSelectOpen] = useState(false)
   const [selectedSemester, setSelectedSemester] = useState(null) // 선택된 학기 (예: "2025-1", "2025-여름", "2025-2", "2025-겨울")
   const [feedback, setFeedback] = useState(null)
+  const [isFeedbackFading, setIsFeedbackFading] = useState(false)
   const menuRef = useRef(null)
   const [chatMessages, setChatMessages] = useState(() => [
     {
@@ -429,13 +465,29 @@ function Schedule() {
   const [selectedCourse, setSelectedCourse] = useState(null)
   const [isCourseModalOpen, setIsCourseModalOpen] = useState(false)
   const [activeTab, setActiveTab] = useState('시간표')
+  const [sliderStyle, setSliderStyle] = useState({ left: 0, width: 0 })
+  const navRef = useRef(null)
   const [isSaveConfirmOpen, setIsSaveConfirmOpen] = useState(false)
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
+  const [scheduleToDelete, setScheduleToDelete] = useState(null)
+  const [courseToAdd, setCourseToAdd] = useState(null)
+  const [isCourseAddModalOpen, setIsCourseAddModalOpen] = useState(false)
+  const [isTimeConflictModalOpen, setIsTimeConflictModalOpen] = useState(false)
+  const [conflictInfo, setConflictInfo] = useState(null)
+  const [bottomSheetHeight, setBottomSheetHeight] = useState(80)
+  const [isDragging, setIsDragging] = useState(false)
   const [selectedScheduleDetail, setSelectedScheduleDetail] = useState(null)
   const [isDetailMenuOpen, setIsDetailMenuOpen] = useState(false)
   const [isEditingDetail, setIsEditingDetail] = useState(false)
   const detailMenuRef = useRef(null)
   const [browseSchedules, setBrowseSchedules] = useState([]) // 둘러보기용 친구들의 시간표
   const [browseIndex, setBrowseIndex] = useState(0) // 둘러보기 현재 인덱스
+  const [selectedCategory, setSelectedCategory] = useState(null) // 선택된 카테고리 ('전필', '전선', '교양')
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false) // 카테고리 과목 목록 모달
+  const [categoryModalSchedule, setCategoryModalSchedule] = useState(null) // 카테고리 모달에 표시할 스케줄
+  const [isRenameModalOpen, setIsRenameModalOpen] = useState(false) // 이름 변경 모달
+  const [scheduleToRename, setScheduleToRename] = useState(null) // 이름 변경할 시간표
+  const [newScheduleName, setNewScheduleName] = useState('') // 새 시간표 이름
 
   const currentSchedule = aiSchedules[currentIndex]
   const currentSavedSchedule = savedSchedules[savedIndex]
@@ -478,9 +530,23 @@ function Schedule() {
   }, [])
 
   useEffect(() => {
-    if (!feedback) return
-    const timer = setTimeout(() => setFeedback(null), 3200)
-    return () => clearTimeout(timer)
+    if (!feedback) {
+      setIsFeedbackFading(false)
+      return
+    }
+    // 1.5초 후 페이드 아웃 시작
+    const fadeTimer = setTimeout(() => {
+      setIsFeedbackFading(true)
+    }, 1500)
+    // 2초 후 완전히 제거
+    const removeTimer = setTimeout(() => {
+      setFeedback(null)
+      setIsFeedbackFading(false)
+    }, 2000)
+    return () => {
+      clearTimeout(fadeTimer)
+      clearTimeout(removeTimer)
+    }
   }, [feedback])
 
   useEffect(() => {
@@ -585,26 +651,26 @@ function Schedule() {
     setBrowseIndex(0) // 초기화
   }, [buildAiSchedules])
 
-  const handleSaveSchedule = () => {
-    if (!currentSchedule) return
+  const handleSaveSchedule = (schedule = null) => {
+    const targetSchedule = schedule || currentSchedule
+    if (!targetSchedule) return
+    setCurrentIndex(schedule ? aiSchedules.indexOf(schedule) : currentIndex)
     setIsSaveConfirmOpen(true)
   }
 
   const confirmSaveSchedule = () => {
-    if (!currentSchedule) return
-    const signature = signatureFromCourses(currentSchedule.courses)
+    const targetSchedule = currentSchedule
+    if (!targetSchedule) return
+    const signature = signatureFromCourses(targetSchedule.courses)
 
-    const duplicated = savedSchedules.some((schedule) => schedule.signature === signature)
-    if (duplicated) {
-      setFeedback({ type: 'info', text: '이미 저장된 시간표예요.' })
-      setIsSaveConfirmOpen(false)
-      return
-    }
+    const baseLabel = targetSchedule.label || getSemesterLabel()
+    const uniqueLabel = generateUniqueLabel(baseLabel, savedSchedules)
 
     const payload = {
-      ...currentSchedule,
-      id: `${currentSchedule.id}-saved-${Date.now()}`,
+      ...targetSchedule,
+      id: `${targetSchedule.id}-saved-${Date.now()}`,
       signature,
+      label: uniqueLabel,
       savedAt: new Date().toISOString()
     }
 
@@ -618,24 +684,69 @@ function Schedule() {
   const handleSaveBrowseSchedule = (schedule) => {
     const signature = signatureFromCourses(schedule.courses)
 
-    const duplicated = savedSchedules.some((s) => s.signature === signature)
-    if (duplicated) {
-      setFeedback({ type: 'info', text: '이미 저장된 시간표예요.' })
-      return
-    }
+    const baseLabel = schedule.label || getSemesterLabel()
+    const uniqueLabel = generateUniqueLabel(baseLabel, savedSchedules)
 
     const payload = {
       ...schedule,
       id: `${schedule.id}-saved-${Date.now()}`,
       signature,
       savedAt: new Date().toISOString(),
-      label: schedule.label || getSemesterLabel()
+      label: uniqueLabel
     }
 
     setSavedSchedules((prev) => [payload, ...prev])
     setSavedIndex(0)
     setFeedback({ type: 'success', text: '시간표를 제작 탭에 저장했어요.' })
     setActiveTab('제작')
+  }
+
+  const handleDeleteSchedule = (scheduleId) => {
+    setSavedSchedules((prev) => prev.filter((schedule) => schedule.id !== scheduleId))
+    if (selectedScheduleDetail?.id === scheduleId) {
+      setSelectedScheduleDetail(null)
+      setIsEditingDetail(false)
+    }
+    setIsDeleteConfirmOpen(false)
+    setScheduleToDelete(null)
+    setFeedback({ type: 'success', text: '시간표를 삭제했어요.' })
+  }
+
+  const handleRenameSchedule = (scheduleId, newName) => {
+    if (!newName.trim()) {
+      setFeedback({ type: 'info', text: '이름을 입력해주세요.' })
+      return
+    }
+    
+    setSavedSchedules((prev) =>
+      prev.map((schedule) => {
+        if (schedule.id === scheduleId) {
+          return { ...schedule, label: newName.trim() }
+        }
+        return schedule
+      })
+    )
+    
+    // 상세 화면이 열려있으면 업데이트
+    if (selectedScheduleDetail && selectedScheduleDetail.id === scheduleId) {
+      setSelectedScheduleDetail((prev) => ({ ...prev, label: newName.trim() }))
+    }
+    
+    setIsRenameModalOpen(false)
+    setScheduleToRename(null)
+    setNewScheduleName('')
+    setFeedback({ type: 'success', text: '시간표 이름을 변경했어요.' })
+  }
+
+  const confirmDeleteSchedule = () => {
+    if (scheduleToDelete) {
+      handleDeleteSchedule(scheduleToDelete)
+    }
+  }
+
+  const cancelDeleteSchedule = () => {
+    setIsDeleteConfirmOpen(false)
+    setScheduleToDelete(null)
   }
 
   const cancelSaveSchedule = () => {
@@ -667,20 +778,31 @@ function Schedule() {
     )
   }
 
-  const handleAddCourse = (scheduleId, courseToAdd) => {
+  const handleAddCourse = (scheduleId, courseToAdd, replaceConflicting = false) => {
     setSavedSchedules((prev) =>
       prev.map((schedule) => {
         if (schedule.id !== scheduleId) return schedule
         if (schedule.courses.some((course) => course.courseId === courseToAdd.courseId)) return schedule
-        if (hasTimeConflict(schedule.courses, courseToAdd)) {
-          setFeedback({
-            type: 'warning',
-            text: '이미 같은 시간대에 강의가 있어서 추가할 수 없어요.'
+        
+        const conflictingCourses = findConflictingCourses(schedule.courses, courseToAdd)
+        if (conflictingCourses.length > 0 && !replaceConflicting) {
+          setConflictInfo({
+            scheduleId,
+            courseToAdd,
+            conflictingCourses
           })
+          setIsTimeConflictModalOpen(true)
           return schedule
         }
 
-        const updatedCourses = [...schedule.courses, courseToAdd]
+        let updatedCourses = [...schedule.courses]
+        if (replaceConflicting && conflictingCourses.length > 0) {
+          // 충돌하는 과목들 제거
+          const conflictingIds = new Set(conflictingCourses.map(c => c.courseId))
+          updatedCourses = updatedCourses.filter(course => !conflictingIds.has(course.courseId))
+        }
+        
+        updatedCourses = [...updatedCourses, courseToAdd]
         const summary = summariseCourses(updatedCourses)
         const updated = {
           ...schedule,
@@ -697,10 +819,67 @@ function Schedule() {
     )
   }
 
+  const handleReplaceCourse = () => {
+    if (conflictInfo) {
+      handleAddCourse(conflictInfo.scheduleId, conflictInfo.courseToAdd, true)
+      setIsTimeConflictModalOpen(false)
+      setConflictInfo(null)
+      setCourseToAdd(null)
+    }
+  }
+
+  const handleCancelReplace = () => {
+    setIsTimeConflictModalOpen(false)
+    setConflictInfo(null)
+  }
+
+  const handleDragStart = (e) => {
+    setIsDragging(true)
+    e.preventDefault()
+  }
+
+  const handleDrag = useCallback((e) => {
+    e.preventDefault()
+    const touch = e.touches ? e.touches[0] : e
+    const windowHeight = window.innerHeight
+    const dragY = touch.clientY
+    const newHeight = ((windowHeight - dragY) / windowHeight) * 100
+    
+    // 최소 30%, 최대 90%로 제한
+    const clampedHeight = Math.max(30, Math.min(90, newHeight))
+    
+    requestAnimationFrame(() => {
+      setBottomSheetHeight(clampedHeight)
+    })
+  }, [])
+
+  const handleDragEnd = useCallback(() => {
+    setIsDragging(false)
+  }, [])
+
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleDrag)
+      document.addEventListener('mouseup', handleDragEnd)
+      document.addEventListener('touchmove', handleDrag, { passive: false })
+      document.addEventListener('touchend', handleDragEnd)
+      
+      return () => {
+        document.removeEventListener('mousemove', handleDrag)
+        document.removeEventListener('mouseup', handleDragEnd)
+        document.removeEventListener('touchmove', handleDrag)
+        document.removeEventListener('touchend', handleDragEnd)
+      }
+    }
+  }, [isDragging, handleDrag, handleDragEnd])
+
   const getAddableCourses = (schedule) => {
     const existingIds = new Set(schedule.courses.map((course) => course.courseId))
     return availableCourses
-      .filter((course) => !existingIds.has(course.courseId))
+      .map((course) => ({
+        ...course,
+        isAdded: existingIds.has(course.courseId)
+      }))
       .slice(0, 12)
   }
 
@@ -740,6 +919,19 @@ function Schedule() {
   const isEditingSaved = Boolean(currentSavedSchedule && editingScheduleId === currentSavedSchedule?.id)
   const savedAddableCourses =
     isEditingSaved && currentSavedSchedule ? getAddableCourses(currentSavedSchedule) : []
+  
+  const getSavedAddableCoursesWithStatus = () => {
+    if (!isEditingSaved || !currentSavedSchedule) return []
+    const existingIds = new Set(currentSavedSchedule.courses.map((course) => course.courseId))
+    return availableCourses
+      .map((course) => ({
+        ...course,
+        isAdded: existingIds.has(course.courseId)
+      }))
+      .slice(0, 12)
+  }
+  
+  const savedAddableCoursesWithStatus = getSavedAddableCoursesWithStatus()
 
   useEffect(() => {
     if (isEditingSaved || isEditingDetail || isSemesterSelectOpen) {
@@ -756,10 +948,41 @@ function Schedule() {
     }
   }, [isEditingSaved, isEditingDetail, isSemesterSelectOpen])
 
+  // 슬라이더 위치 계산
+  useEffect(() => {
+    const updateSliderPosition = () => {
+      if (!navRef.current) return
+
+      const tabs = navRef.current.querySelectorAll('.schedule-nav-item')
+      const activeIndex = Array.from(tabs).findIndex(
+        (tab) => tab.classList.contains('active')
+      )
+
+      if (activeIndex !== -1) {
+        const activeTab = tabs[activeIndex]
+        const navRect = navRef.current.getBoundingClientRect()
+        const tabRect = activeTab.getBoundingClientRect()
+
+        setSliderStyle({
+          left: tabRect.left - navRect.left,
+          width: tabRect.width
+        })
+      }
+    }
+
+    updateSliderPosition()
+    window.addEventListener('resize', updateSliderPosition)
+    
+    return () => {
+      window.removeEventListener('resize', updateSliderPosition)
+    }
+  }, [activeTab])
+
   return (
     <>
       <div className="page-container">
-      <nav className="schedule-top-nav">
+      <nav className="schedule-top-nav" ref={navRef}>
+        <div className="schedule-nav-slider" style={sliderStyle} />
         <button 
           className={`schedule-nav-item ${activeTab === '시간표' ? 'active' : ''}`}
           onClick={() => setActiveTab('시간표')}
@@ -837,15 +1060,39 @@ function Schedule() {
                   </div>
 
                   <div className="schedule-meta compact">
-                    <div className="schedule-chip">
+                    <div 
+                      className="schedule-chip" 
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => {
+                        setCategoryModalSchedule(currentSavedSchedule)
+                        setSelectedCategory('전필')
+                        setIsCategoryModalOpen(true)
+                      }}
+                    >
                       <span>전공필수</span>
                       <strong>{currentSavedSchedule.requiredCount}과목</strong>
                     </div>
-                    <div className="schedule-chip">
+                    <div 
+                      className="schedule-chip" 
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => {
+                        setCategoryModalSchedule(currentSavedSchedule)
+                        setSelectedCategory('전선')
+                        setIsCategoryModalOpen(true)
+                      }}
+                    >
                       <span>전공선택</span>
                       <strong>{currentSavedSchedule.courses.filter(c => c.type === '전선').length}과목</strong>
                     </div>
-                    <div className="schedule-chip">
+                    <div 
+                      className="schedule-chip" 
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => {
+                        setCategoryModalSchedule(currentSavedSchedule)
+                        setSelectedCategory('교양')
+                        setIsCategoryModalOpen(true)
+                      }}
+                    >
                       <span>교양</span>
                       <strong>{currentSavedSchedule.courses.filter(c => c.type === '교양').length}과목</strong>
                     </div>
@@ -866,7 +1113,16 @@ function Schedule() {
 
             {isEditingSaved && (
               <div className="edit-bottom-sheet-overlay" onClick={() => toggleEditSchedule(currentSavedSchedule.id)}>
-                <div className="edit-bottom-sheet" onClick={(e) => e.stopPropagation()}>
+                <div 
+                  className="edit-bottom-sheet" 
+                  onClick={(e) => e.stopPropagation()}
+                  style={{ height: `${bottomSheetHeight}vh` }}
+                >
+                  <div 
+                    className="edit-bottom-sheet-drag-handle"
+                    onMouseDown={handleDragStart}
+                    onTouchStart={handleDragStart}
+                  />
                   <div className="edit-bottom-sheet-header">
                     <h3>과목 추가하기</h3>
                     <button 
@@ -994,74 +1250,110 @@ function Schedule() {
           </form>
         </section>
 
-        {!isEmpty && currentSchedule ? (
-          <div className="schedule-display">
-            <div className="schedule-card">
-              <div className="schedule-card-head">
-                <div>
-                  <div className="schedule-title-row">
-                    <h2 className="schedule-card-title">{currentSchedule.label}</h2>
-                  <p className="schedule-chip-label" style={{ color: currentSchedule.theme.accent }}>
-                    {currentSchedule.theme.label}
-                  </p>
+        {!isEmpty && aiSchedules.length > 0 ? (
+          <div className="schedule-display browse-carousel-container">
+            <button
+              type="button"
+              className="browse-nav-button browse-nav-prev"
+              onClick={() => setCurrentIndex((prev) => Math.max(prev - 1, 0))}
+              disabled={isGenerating || currentIndex === 0}
+            >
+              ‹
+            </button>
+            <button
+              type="button"
+              className="browse-nav-button browse-nav-next"
+              onClick={() => setCurrentIndex((prev) => Math.min(prev + 1, aiSchedules.length - 1))}
+              disabled={isGenerating || currentIndex === aiSchedules.length - 1}
+            >
+              ›
+            </button>
+            <div 
+              className="browse-carousel-track"
+              style={{ transform: `translateX(-${currentIndex * 100}%)` }}
+            >
+              {aiSchedules.map((schedule) => (
+                <div key={schedule.id} className="browse-carousel-slide">
+                  <div className="schedule-card saved-card browse-schedule-card-wrapper">
+                    <div className="saved-card-top">
+                      <div>
+                        <div className="saved-card-title-row">
+                          <p className="saved-card-title">{schedule.label}</p>
+                          <span className="saved-card-credits">{schedule.totalCredits}학점</span>
+                        </div>
+                      </div>
+                      <span className="schedule-index">
+                        {aiSchedules.indexOf(schedule) + 1} / {aiSchedules.length}
+                      </span>
+                    </div>
+
+                    <div className="schedule-theme-description">
+                      <span className="schedule-theme-label" style={{ color: schedule.theme.accent }}>
+                        {schedule.theme.label}
+                      </span>
+                      <span className="schedule-theme-text">{schedule.summary}</span>
+                    </div>
+
+                    <div className="schedule-meta compact">
+                      <div 
+                        className="schedule-chip" 
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => {
+                          setCategoryModalSchedule(schedule)
+                          setSelectedCategory('전필')
+                          setIsCategoryModalOpen(true)
+                        }}
+                      >
+                        <span>전공필수</span>
+                        <strong>{schedule.requiredCount}과목</strong>
+                      </div>
+                      <div 
+                        className="schedule-chip" 
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => {
+                          setCategoryModalSchedule(schedule)
+                          setSelectedCategory('전선')
+                          setIsCategoryModalOpen(true)
+                        }}
+                      >
+                        <span>전공선택</span>
+                        <strong>{schedule.courses.filter(c => c.type === '전선').length}과목</strong>
+                      </div>
+                      <div 
+                        className="schedule-chip" 
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => {
+                          setCategoryModalSchedule(schedule)
+                          setSelectedCategory('교양')
+                          setIsCategoryModalOpen(true)
+                        }}
+                      >
+                        <span>교양</span>
+                        <strong>{schedule.courses.filter(c => c.type === '교양').length}과목</strong>
+                      </div>
+                    </div>
+
+                    <TimetableGrid 
+                      courses={schedule.courses} 
+                      onBlockClick={(course) => {
+                        setSelectedCourse(course)
+                        setIsCourseModalOpen(true)
+                      }}
+                    />
+
+                    <div className="schedule-actions">
+                      <div className="schedule-actions-grid">
+                        <button 
+                          className="primary-btn" 
+                          onClick={() => handleSaveSchedule(schedule)}
+                        >
+                          이 시간표 저장하기
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  <p className="schedule-card-summary">{currentSchedule.summary}</p>
                 </div>
-                <span className="schedule-index">
-                  {currentIndex + 1} / {aiSchedules.length}
-                </span>
-              </div>
-
-              <div className="schedule-meta">
-                <div className="schedule-chip">
-                  <span>총 학점</span>
-                  <strong>{currentSchedule.totalCredits}학점</strong>
-                </div>
-                <div className="schedule-chip">
-                  <span>전필</span>
-                  <strong>{currentSchedule.requiredCount}과목</strong>
-                </div>
-                <div className="schedule-chip">
-                  <span>전선·교양</span>
-                  <strong>{currentSchedule.electiveCount}과목</strong>
-                </div>
-              </div>
-
-              <TimetableGrid 
-                courses={currentSchedule.courses} 
-                onBlockClick={(course) => {
-                  setSelectedCourse(course)
-                  setIsCourseModalOpen(true)
-                }}
-              />
-
-              <div className="schedule-actions">
-                <div className="schedule-actions-grid">
-                  <button className="primary-btn" onClick={handleSaveSchedule}>
-                    이 시간표 저장하기
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="carousel-controls">
-              <button
-                type="button"
-                className="arrow-button slim"
-                onClick={() => setCurrentIndex((prev) => Math.max(prev - 1, 0))}
-                disabled={isGenerating || currentIndex === 0}
-              >
-                ‹ 이전
-              </button>
-              <span className="carousel-divider" />
-              <button
-                type="button"
-                className="arrow-button slim"
-                onClick={() => setCurrentIndex((prev) => Math.min(prev + 1, aiSchedules.length - 1))}
-                disabled={isGenerating || currentIndex === aiSchedules.length - 1}
-              >
-                다음 ›
-              </button>
+              ))}
             </div>
           </div>
         ) : (
@@ -1071,7 +1363,7 @@ function Schedule() {
         )}
 
         {feedback && (
-          <div className={`inline-feedback ${feedback.type || 'info'}`}>
+          <div className={`inline-feedback ${feedback.type || 'info'} ${isFeedbackFading ? 'fading-out' : ''}`}>
             <span>{feedback.text}</span>
           </div>
             )}
@@ -1135,28 +1427,73 @@ function Schedule() {
                           <button 
                             className="menu-item"
                             onClick={() => {
+                              setScheduleToRename(selectedScheduleDetail)
+                              setNewScheduleName(selectedScheduleDetail.label)
+                              setIsDetailMenuOpen(false)
+                              setIsRenameModalOpen(true)
+                            }}
+                          >
+                            이름 변경하기
+                          </button>
+                          <button 
+                            className="menu-item"
+                            onClick={() => {
                               setIsDetailMenuOpen(false)
                               setIsEditingDetail(true)
                             }}
                           >
-                            시간표 수정하기
+                            수정하기
                           </button>
-          </div>
+                          <button 
+                            className="menu-item menu-item-danger"
+                            onClick={() => {
+                              setIsDetailMenuOpen(false)
+                              setScheduleToDelete(selectedScheduleDetail.id)
+                              setIsDeleteConfirmOpen(true)
+                            }}
+                          >
+                            삭제하기
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>
                 </div>
                 <div className="schedule-detail-content-fullscreen">
                   <div className="schedule-meta compact">
-                    <div className="schedule-chip">
+                    <div 
+                      className="schedule-chip" 
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => {
+                        setCategoryModalSchedule(selectedScheduleDetail)
+                        setSelectedCategory('전필')
+                        setIsCategoryModalOpen(true)
+                      }}
+                    >
                       <span>전공필수</span>
                       <strong>{selectedScheduleDetail.requiredCount}과목</strong>
                     </div>
-                    <div className="schedule-chip">
+                    <div 
+                      className="schedule-chip" 
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => {
+                        setCategoryModalSchedule(selectedScheduleDetail)
+                        setSelectedCategory('전선')
+                        setIsCategoryModalOpen(true)
+                      }}
+                    >
                       <span>전공선택</span>
                       <strong>{selectedScheduleDetail.courses.filter(c => c.type === '전선').length}과목</strong>
                     </div>
-                    <div className="schedule-chip">
+                    <div 
+                      className="schedule-chip" 
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => {
+                        setCategoryModalSchedule(selectedScheduleDetail)
+                        setSelectedCategory('교양')
+                        setIsCategoryModalOpen(true)
+                      }}
+                    >
                       <span>교양</span>
                       <strong>{selectedScheduleDetail.courses.filter(c => c.type === '교양').length}과목</strong>
                     </div>
@@ -1175,7 +1512,16 @@ function Schedule() {
 
                 {isEditingDetail && (
                   <div className="edit-bottom-sheet-overlay" onClick={() => setIsEditingDetail(false)}>
-                    <div className="edit-bottom-sheet" onClick={(e) => e.stopPropagation()}>
+                    <div 
+                      className="edit-bottom-sheet" 
+                      onClick={(e) => e.stopPropagation()}
+                      style={{ height: `${bottomSheetHeight}vh` }}
+                    >
+                      <div 
+                        className="edit-bottom-sheet-drag-handle"
+                        onMouseDown={handleDragStart}
+                        onTouchStart={handleDragStart}
+                      />
                       <div className="edit-bottom-sheet-header">
                         <h3>과목 추가하기</h3>
                         <button 
@@ -1194,11 +1540,22 @@ function Schedule() {
                             getAddableCourses(selectedScheduleDetail).map((course) => (
                               <button
                                 key={course.courseId}
-                                className="add-course-pill"
-                                onClick={() => handleAddCourse(selectedScheduleDetail.id, course)}
+                                className={`add-course-pill ${courseToAdd?.courseId === course.courseId ? 'selected' : ''} ${course.isAdded ? 'added' : ''}`}
+                                onClick={() => {
+                                  if (!course.isAdded) {
+                                    setCourseToAdd(courseToAdd?.courseId === course.courseId ? null : course)
+                                  }
+                                }}
                               >
                                 <div className="course-pill-header">
-                                  <span className="course-name">{course.name}</span>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    {course.isAdded ? (
+                                      <span style={{ color: '#4f46e5', fontSize: '1.2rem', lineHeight: 1 }}>✓</span>
+                                    ) : (
+                                      <span style={{ width: '1.2rem', height: '1.2rem' }}></span>
+                                    )}
+                                    <span className="course-name">{course.name}</span>
+                                  </div>
                                   <div className="course-header-right">
                                     <span className="course-professor">{course.professor}</span>
                                     <span className="course-type-badge">{course.type}</span>
@@ -1228,6 +1585,32 @@ function Schedule() {
                                     )}
                                   </div>
                                 </div>
+                                {courseToAdd?.courseId === course.courseId && !course.isAdded && (
+                                  <div style={{ display: 'flex', gap: '6px', marginTop: '8px', width: '100%' }}>
+                                    <button 
+                                      className="primary-btn" 
+                                      style={{ flex: 1, fontSize: '0.75rem', padding: '6px 10px' }}
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        if (selectedScheduleDetail?.id) {
+                                          handleAddCourse(selectedScheduleDetail.id, course)
+                                        }
+                                      }}
+                                    >
+                                      추가하기
+                                    </button>
+                                    <a
+                                      href="https://infodepot.korea.ac.kr/lecture1/lecsubjectPlanViewNew.jsp?year=2025&term=2R&grad_cd=0136&col_cd=9999&dept_cd=0233&cour_cd=NRSG172&cour_cls=00&cour_nm=&std_id=&device=WW"
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="ghost-btn"
+                                      style={{ flex: 1, fontSize: '0.75rem', padding: '6px 10px', textAlign: 'center', textDecoration: 'none' }}
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      강의계획서
+                                    </a>
+                                  </div>
+                                )}
                               </button>
                             ))
                           )}
@@ -1249,7 +1632,12 @@ function Schedule() {
               </div>
             ) : (
               browseSchedules.length > 0 && (
-                <div className="schedule-display browse-carousel-container">
+                <>
+                  <div className="browse-header">
+                    <h2 className="browse-header-title">컴퓨터학과 24학번</h2>
+                    <p className="browse-header-count">총 시간표 {browseSchedules.length}개</p>
+                  </div>
+                  <div className="schedule-display browse-carousel-container">
                   <button
                     type="button"
                     className="browse-nav-button browse-nav-prev"
@@ -1279,22 +1667,43 @@ function Schedule() {
                                 <p className="saved-card-title">{schedule.label}</p>
                                 <span className="saved-card-credits">{schedule.totalCredits}학점</span>
                               </div>
-                              <p className="browse-schedule-author">
-                                {schedule.friendName} · {schedule.friendMajor}
-                              </p>
                             </div>
                           </div>
 
                           <div className="schedule-meta compact">
-                            <div className="schedule-chip">
+                            <div 
+                              className="schedule-chip" 
+                              style={{ cursor: 'pointer' }}
+                              onClick={() => {
+                                setCategoryModalSchedule(schedule)
+                                setSelectedCategory('전필')
+                                setIsCategoryModalOpen(true)
+                              }}
+                            >
                               <span>전공필수</span>
                               <strong>{schedule.requiredCount}과목</strong>
                             </div>
-                            <div className="schedule-chip">
+                            <div 
+                              className="schedule-chip" 
+                              style={{ cursor: 'pointer' }}
+                              onClick={() => {
+                                setCategoryModalSchedule(schedule)
+                                setSelectedCategory('전선')
+                                setIsCategoryModalOpen(true)
+                              }}
+                            >
                               <span>전공선택</span>
                               <strong>{schedule.courses.filter(c => c.type === '전선').length}과목</strong>
                             </div>
-                            <div className="schedule-chip">
+                            <div 
+                              className="schedule-chip" 
+                              style={{ cursor: 'pointer' }}
+                              onClick={() => {
+                                setCategoryModalSchedule(schedule)
+                                setSelectedCategory('교양')
+                                setIsCategoryModalOpen(true)
+                              }}
+                            >
                               <span>교양</span>
                               <strong>{schedule.courses.filter(c => c.type === '교양').length}과목</strong>
                             </div>
@@ -1324,6 +1733,7 @@ function Schedule() {
                     ))}
                   </div>
                 </div>
+                </>
               )
             )}
           </>
@@ -1405,17 +1815,54 @@ function Schedule() {
                     <>
                       <p className="edit-hint">시간표 블록 또는 아래 버튼으로 과목을 삭제/추가할 수 있어요.</p>
                       <div className="add-course-grid">
-                        {savedAddableCourses.length === 0 ? (
+                        {savedAddableCoursesWithStatus.length === 0 ? (
                           <span className="empty-state-hint">추가할 수 있는 과목이 없어요.</span>
                         ) : (
-                          savedAddableCourses.map((course) => (
+                          savedAddableCoursesWithStatus.map((course) => (
                             <button
                               key={course.courseId}
-                              className="add-course-pill"
-                              onClick={() => handleAddCourse(currentSavedSchedule.id, course)}
+                              className={`add-course-pill ${courseToAdd?.courseId === course.courseId ? 'selected' : ''} ${course.isAdded ? 'added' : ''}`}
+                              onClick={() => {
+                                if (!course.isAdded) {
+                                  setCourseToAdd(courseToAdd?.courseId === course.courseId ? null : course)
+                                }
+                              }}
                             >
-                              <span>{course.name}</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
+                                {course.isAdded ? (
+                                  <span style={{ color: '#4f46e5', fontSize: '1.2rem', lineHeight: 1 }}>✓</span>
+                                ) : (
+                                  <span style={{ width: '1.2rem', height: '1.2rem' }}></span>
+                                )}
+                                <span>{course.name}</span>
+                              </div>
                               <small>{course.schedule || '시간 협의'}</small>
+                              {courseToAdd?.courseId === course.courseId && !course.isAdded && (
+                                <div style={{ display: 'flex', gap: '6px', marginTop: '8px', width: '100%' }}>
+                                  <button 
+                                    className="primary-btn" 
+                                    style={{ flex: 1, fontSize: '0.75rem', padding: '6px 10px' }}
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      if (currentSavedSchedule?.id) {
+                                        handleAddCourse(currentSavedSchedule.id, course)
+                                      }
+                                    }}
+                                  >
+                                    추가하기
+                                  </button>
+                                  <a
+                                    href="https://infodepot.korea.ac.kr/lecture1/lecsubjectPlanViewNew.jsp?year=2025&term=2R&grad_cd=0136&col_cd=9999&dept_cd=0233&cour_cd=NRSG172&cour_cls=00&cour_nm=&std_id=&device=WW"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="ghost-btn"
+                                    style={{ flex: 1, fontSize: '0.75rem', padding: '6px 10px', textAlign: 'center', textDecoration: 'none' }}
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    강의계획서
+                                  </a>
+                                </div>
+                              )}
                             </button>
                           ))
                         )}
@@ -1459,6 +1906,121 @@ function Schedule() {
       </div>
     )}
 
+    {isDeleteConfirmOpen && (
+      <div className="course-modal-overlay" onClick={cancelDeleteSchedule}>
+        <div className="course-modal save-confirm-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="course-modal-header">
+            <h3>시간표 삭제</h3>
+          </div>
+          <div className="course-modal-content">
+            <p style={{ textAlign: 'center', marginBottom: '20px', color: '#4a5568' }}>
+              정말 이 시간표를 삭제하시겠어요?
+            </p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button className="ghost-btn" onClick={cancelDeleteSchedule}>
+                취소
+              </button>
+              <button className="primary-btn" style={{ backgroundColor: '#e53e3e', border: 'none' }} onClick={confirmDeleteSchedule}>
+                삭제
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {isTimeConflictModalOpen && conflictInfo && (
+      <div className="course-modal-overlay" onClick={handleCancelReplace}>
+        <div className="course-modal save-confirm-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="course-modal-header">
+            <h3>수업 시간이 겹칩니다</h3>
+          </div>
+          <div className="course-modal-content">
+            <p style={{ textAlign: 'center', marginBottom: '16px', color: '#4a5568' }}>
+              추가하려는 과목과 다음 과목의 시간이 겹칩니다:
+            </p>
+            <div style={{ marginBottom: '20px', maxHeight: '200px', overflowY: 'auto' }}>
+              {conflictInfo.conflictingCourses.map((course) => (
+                <div key={course.courseId} style={{ 
+                  padding: '12px', 
+                  marginBottom: '8px', 
+                  background: '#f7fafc', 
+                  borderRadius: '8px',
+                  border: '1px solid #e2e8f0'
+                }}>
+                  <div style={{ fontWeight: 600, marginBottom: '4px' }}>{course.name}</div>
+                  <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                    {course.schedule || '시간 협의'}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button className="ghost-btn" onClick={handleCancelReplace}>
+                취소
+              </button>
+              <button className="primary-btn" onClick={handleReplaceCourse}>
+                교체하기
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {isCourseAddModalOpen && courseToAdd && (
+      <div className="course-modal-overlay" onClick={() => setIsCourseAddModalOpen(false)}>
+        <div className="course-modal save-confirm-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="course-modal-header">
+            <h3>{courseToAdd.name}</h3>
+            <button className="course-modal-close" onClick={() => setIsCourseAddModalOpen(false)}>
+              ✕
+            </button>
+          </div>
+          <div className="course-modal-content">
+            <div className="course-modal-info" style={{ marginBottom: '20px' }}>
+              <div className="course-info-row">
+                <span className="course-info-label">교수</span>
+                <span className="course-info-value">{courseToAdd.professor}</span>
+              </div>
+              <div className="course-info-row">
+                <span className="course-info-label">시간</span>
+                <span className="course-info-value">{courseToAdd.schedule || '시간 협의'}</span>
+              </div>
+              <div className="course-info-row">
+                <span className="course-info-label">학점</span>
+                <span className="course-info-value">{courseToAdd.credits}학점</span>
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <button 
+                className="primary-btn" 
+                onClick={() => {
+                  const scheduleId = isEditingDetail ? selectedScheduleDetail?.id : currentSavedSchedule?.id
+                  if (scheduleId) {
+                    handleAddCourse(scheduleId, courseToAdd)
+                    setIsCourseAddModalOpen(false)
+                    setCourseToAdd(null)
+                  }
+                }}
+              >
+                시간표에 추가
+              </button>
+              <a
+                href="https://infodepot.korea.ac.kr/lecture1/lecsubjectPlanViewNew.jsp?year=2025&term=2R&grad_cd=0136&col_cd=9999&dept_cd=0233&cour_cd=NRSG172&cour_cls=00&cour_nm=&std_id=&device=WW"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ghost-btn"
+                style={{ textAlign: 'center', textDecoration: 'none' }}
+              >
+                강의계획서
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+
     {isCourseModalOpen && selectedCourse && (
       <div className="course-modal-overlay" onClick={() => setIsCourseModalOpen(false)}>
         <div className="course-modal" onClick={(e) => e.stopPropagation()}>
@@ -1496,12 +2058,140 @@ function Schedule() {
                   <span className="course-info-value">{selectedCourse.location}</span>
                 </div>
               )}
-              {selectedCourse.description && (
-                <div className="course-info-row full-width">
-                  <span className="course-info-label">설명</span>
-                  <span className="course-info-value">{selectedCourse.description}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {isCategoryModalOpen && selectedCategory && (selectedScheduleDetail || categoryModalSchedule) && (
+      <div className="course-modal-overlay" onClick={() => {
+        setIsCategoryModalOpen(false)
+        setCategoryModalSchedule(null)
+      }}>
+        <div className="course-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="course-modal-header">
+            <h3>
+              {selectedCategory === '전필' ? '전공필수' : selectedCategory === '전선' ? '전공선택' : '교양'} 과목
+            </h3>
+            <button className="course-modal-close" onClick={() => {
+              setIsCategoryModalOpen(false)
+              setCategoryModalSchedule(null)
+            }}>
+              ✕
+            </button>
+          </div>
+          <div className="course-modal-content" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+            {(() => {
+              const schedule = selectedScheduleDetail || categoryModalSchedule
+              const filteredCourses = schedule.courses.filter((course) => course.type === selectedCategory)
+              return filteredCourses.length === 0 ? (
+                <p style={{ textAlign: 'center', color: '#64748b', padding: '20px' }}>
+                  해당 카테고리의 과목이 없습니다.
+                </p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {filteredCourses.map((course) => (
+                    <div
+                      key={course.courseId}
+                      style={{
+                        padding: '16px',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '8px',
+                        backgroundColor: '#f7fafc',
+                        cursor: 'pointer',
+                        transition: 'background-color 0.2s'
+                      }}
+                      onClick={() => {
+                        setSelectedCourse(course)
+                        setIsCategoryModalOpen(false)
+                        setCategoryModalSchedule(null)
+                        setIsCourseModalOpen(true)
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#edf2f7'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = '#f7fafc'
+                      }}
+                    >
+                      <div style={{ fontWeight: 600, marginBottom: '4px', fontSize: '1rem' }}>
+                        {course.name}
+                      </div>
+                      <div style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '4px' }}>
+                        {course.courseId} · {course.professor} · {course.credits}학점
+                      </div>
+                      {course.schedule && (
+                        <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                          {course.schedule}
+                          {course.location && ` · ${course.location}`}
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
-              )}
+              )
+            })()}
+          </div>
+        </div>
+      </div>
+    )}
+
+    {isRenameModalOpen && scheduleToRename && (
+      <div className="course-modal-overlay" onClick={() => {
+        setIsRenameModalOpen(false)
+        setScheduleToRename(null)
+        setNewScheduleName('')
+      }}>
+        <div className="course-modal save-confirm-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="course-modal-header">
+            <h3>시간표 이름 변경</h3>
+            <button className="course-modal-close" onClick={() => {
+              setIsRenameModalOpen(false)
+              setScheduleToRename(null)
+              setNewScheduleName('')
+            }}>
+              ✕
+            </button>
+          </div>
+          <div className="course-modal-content">
+            <input
+              type="text"
+              value={newScheduleName}
+              onChange={(e) => setNewScheduleName(e.target.value)}
+              placeholder="시간표 이름을 입력하세요"
+              style={{
+                width: '100%',
+                padding: '12px',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                fontSize: '1rem',
+                marginBottom: '20px'
+              }}
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleRenameSchedule(scheduleToRename.id, newScheduleName)
+                }
+              }}
+            />
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button 
+                className="ghost-btn" 
+                onClick={() => {
+                  setIsRenameModalOpen(false)
+                  setScheduleToRename(null)
+                  setNewScheduleName('')
+                }}
+              >
+                취소
+              </button>
+              <button 
+                className="primary-btn" 
+                onClick={() => handleRenameSchedule(scheduleToRename.id, newScheduleName)}
+              >
+                변경
+              </button>
             </div>
           </div>
         </div>
