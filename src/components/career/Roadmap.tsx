@@ -294,21 +294,21 @@ function Roadmap() {
                   </div>
                   <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-600">추천</span>
                 </div>
-                <div className="mt-3 flex items-center gap-2 text-xs text-gray-600">
-                  <span>{course.credits}학점</span>
-                  <span>·</span>
-                  <span>{course.type}</span>
-                  {course.prerequisites.length > 0 ? (
-                    <>
-                      <span>·</span>
-                      <span className="text-indigo-600">선수과목 충족 완료</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>·</span>
-                      <span className="text-indigo-600">기초 과목</span>
-                    </>
-                  )}
+                <div className="mt-3 flex flex-col gap-2 text-xs">
+                  <div className="flex items-center justify-between rounded-lg border border-indigo-100 bg-indigo-50/60 px-3 py-2">
+                    <span className="font-semibold text-indigo-500">학점</span>
+                    <span className="font-semibold text-gray-900">{course.credits}학점</span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+                    <span className="font-semibold text-gray-500">구분</span>
+                    <span className="font-semibold text-gray-900">{course.type}</span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg border border-indigo-200 bg-white px-3 py-2">
+                    <span className="font-semibold text-gray-500">상태</span>
+                    <span className={`font-semibold ${course.prerequisites.length > 0 ? 'text-indigo-600' : 'text-emerald-600'}`}>
+                      {course.prerequisites.length > 0 ? '수강 가능' : '기초 과목'}
+                    </span>
+                  </div>
                 </div>
               </button>
             ))}
