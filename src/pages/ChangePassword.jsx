@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "../api/axios";
 import "../App.css";
 
 function ChangePassword() {
@@ -10,34 +11,91 @@ function ChangePassword() {
     confirmPassword: "",
   });
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setPasswords({ ...passwords, [name]: value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
+    // 비밀번호 확인
     if (passwords.newPassword !== passwords.confirmPassword) {
       setError("새 비밀번호가 일치하지 않습니다.");
       return;
     }
-    if (passwords.newPassword.length < 8) {
-      setError("새 비밀번호는 8자 이상이어야 합니다.");
+
+    // 비밀번호 길이 검증 (회원가입과 동일한 기준)
+    if (!passwords.newPassword || passwords.newPassword.length === 0) {
+      setError("새 비밀번호를 입력해주세요.");
       return;
     }
 
-    // In a real app, you would make an API call here
-    // to verify the current password and update to the new one.
-    console.log("비밀번호 변경 시도:", {
-      currentPassword: passwords.currentPassword,
-      newPassword: passwords.newPassword,
-    });
+    if (passwords.newPassword.length < 4 || passwords.newPassword.length > 50) {
+      setError("비밀번호는 4자 이상 50자 이하여야 합니다.");
+      return;
+    }
 
-    alert("비밀번호가 성공적으로 변경되었습니다.");
-    navigate("/mypage");
+    // 비밀번호 변경 API 호출
+    setIsLoading(true);
+    try {
+      // 여러 가능한 엔드포인트 시도
+      let response;
+      const passwordData = {
+        currentPassword: passwords.currentPassword,
+        newPassword: passwords.newPassword,
+      };
+
+      // 1. /api/users/password 시도
+      try {
+        response = await axios.put("/api/users/password", passwordData);
+      } catch (err) {
+        // 2. /api/users/change-password 시도
+        if (err.response?.status === 404) {
+          try {
+            response = await axios.put("/api/users/change-password", passwordData);
+          } catch (err2) {
+            // 3. /api/users/me에 password 필드 포함해서 시도
+            if (err2.response?.status === 404) {
+              response = await axios.put("/api/users/me", {
+                password: passwords.newPassword,
+                currentPassword: passwords.currentPassword,
+              });
+            } else {
+              throw err2;
+            }
+          }
+        } else {
+          throw err;
+        }
+      }
+
+      console.log("비밀번호 변경 성공:", response.data);
+      alert("비밀번호가 성공적으로 변경되었습니다.");
+      navigate("/mypage");
+    } catch (error) {
+      console.error("비밀번호 변경 에러:", error);
+      
+      if (!error.response) {
+        setError("서버에 연결할 수 없습니다. 네트워크 연결을 확인해주세요.");
+      } else if (error.response.status === 404) {
+        setError("비밀번호 변경 기능을 사용할 수 없습니다. 관리자에게 문의해주세요.");
+      } else if (error.response.status === 400) {
+        const message = error.response.data?.message || "현재 비밀번호가 올바르지 않습니다.";
+        setError(message);
+      } else if (error.response.status === 401 || error.response.status === 403) {
+        setError("현재 비밀번호가 올바르지 않습니다.");
+      } else if (error.response.status >= 500) {
+        setError("서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+      } else {
+        setError(`비밀번호 변경에 실패했습니다. (오류 코드: ${error.response.status})`);
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -85,6 +143,7 @@ function ChangePassword() {
               value={passwords.currentPassword}
               onChange={handleInputChange}
               required
+              disabled={isLoading}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
             />
           </div>
@@ -102,6 +161,7 @@ function ChangePassword() {
               value={passwords.newPassword}
               onChange={handleInputChange}
               required
+              disabled={isLoading}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
             />
           </div>
@@ -119,6 +179,7 @@ function ChangePassword() {
               value={passwords.confirmPassword}
               onChange={handleInputChange}
               required
+              disabled={isLoading}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
             />
           </div>
@@ -127,9 +188,10 @@ function ChangePassword() {
 
           <button
             type="submit"
-            className="w-full px-4 py-2 bg-gradient-to-r from-indigo-600 to-blue-600 text-white text-base rounded-lg font-medium"
+            disabled={isLoading}
+            className="w-full px-4 py-2 bg-gradient-to-r from-indigo-600 to-blue-600 text-white text-base rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            비밀번호 변경
+            {isLoading ? "변경 중..." : "비밀번호 변경"}
           </button>
         </form>
       </div>

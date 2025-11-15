@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "../App.css";
+
+const NOTIFICATION_SETTINGS_KEY = "notificationSettings";
 
 function NotificationSettings() {
   const navigate = useNavigate();
@@ -12,13 +14,35 @@ function NotificationSettings() {
     scheduleReminders: true,
   });
 
+  // 설정 불러오기 (localStorage에서)
+  useEffect(() => {
+    const savedSettings = localStorage.getItem(NOTIFICATION_SETTINGS_KEY);
+    if (savedSettings) {
+      try {
+        const parsed = JSON.parse(savedSettings);
+        setSettings({
+          pushNotifications: parsed.pushNotifications ?? true,
+          emailNotifications: parsed.emailNotifications ?? false,
+          messageNotifications: parsed.messageNotifications ?? true,
+          seniorMatchNotifications: parsed.seniorMatchNotifications ?? true,
+          scheduleReminders: parsed.scheduleReminders ?? true,
+        });
+      } catch (error) {
+        console.error("알림 설정 불러오기 에러:", error);
+      }
+    }
+  }, []);
+
   const handleToggle = (key) => {
-    setSettings({ ...settings, [key]: !settings[key] });
+    const newSettings = { ...settings, [key]: !settings[key] };
+    setSettings(newSettings);
+    // 즉시 localStorage에 저장
+    localStorage.setItem(NOTIFICATION_SETTINGS_KEY, JSON.stringify(newSettings));
   };
 
   const handleSave = () => {
-    // API 호출하여 설정 저장
-    console.log("알림 설정 저장:", settings);
+    // localStorage에 저장
+    localStorage.setItem(NOTIFICATION_SETTINGS_KEY, JSON.stringify(settings));
     alert("알림 설정이 저장되었습니다.");
     navigate("/mypage");
   };
