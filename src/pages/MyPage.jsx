@@ -6,6 +6,7 @@ import "../App.css";
 import ProfileCard from "../components/mypage/ProfileCard";
 import CoursePreferenceCard from "../components/mypage/CoursePreferenceCard";
 import SettingsMenu from "../components/mypage/SettingsMenu";
+import KourseLogo from "../../KourseLogo.png";
 
 function MyPage() {
   const navigate = useNavigate();
@@ -176,7 +177,12 @@ function MyPage() {
   return (
     <div className="page-container">
       <div className="page-content">
-        <h1 className="page-title">마이페이지</h1>
+        <div className="page-header">
+          <h1 className="page-title">마이페이지</h1>
+          <div className="page-badge-logo">
+            <img src={KourseLogo} alt="Kourse 로고" />
+          </div>
+        </div>
         <ProfileCard
           profile={profile}
           onSave={handleSave}

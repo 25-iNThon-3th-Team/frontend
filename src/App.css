@@ -341,11 +341,39 @@
   max-width: 100%;
 }
 
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+
 .page-title {
   font-size: 1.5rem;
   font-weight: 700;
   color: #1a202c;
-  margin: 0 0 20px 0;
+  margin: 0;
+}
+
+.page-badge-logo {
+  width: 64px;
+  height: 64px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #1f2a80, #1d1b4b 55%, #3029a6);
+  box-shadow: 0 12px 30px rgba(31, 26, 102, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+}
+
+.page-badge-logo img,
+.page-badge-logo svg {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .page-card {
