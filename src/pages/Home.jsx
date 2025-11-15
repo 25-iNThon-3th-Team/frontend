@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import '../App.css'
 import axios from "../api/axios";
 import useAuthStore from '../store/authStore';
+import KourseLogo from '../../KourseLogo.png';
 
 function Home() {
   const navigate = useNavigate()
@@ -183,7 +184,15 @@ function Home() {
       <div className="page-content">
         {/* 로고 및 타이틀 */}
         <div className="home-header">
-          <h1 className="home-title">Kourse</h1>
+          <div className="home-brand">
+            <div className="home-logo">
+              <img src={KourseLogo} alt="Kourse 로고" />
+            </div>
+            <div className="home-title-wrapper">
+              <h1 className="home-title">Kourse</h1>
+              <p className="home-title-tagline">나만의 맞춤 학습 로드맵</p>
+            </div>
+          </div>
         </div>
 
         {/* 로그인/회원가입 탭 */}
@@ -251,22 +260,6 @@ function Home() {
                     {isLoading ? '로그인 중...' : '로그인'}
                   </button>
                 </form>
-                <button
-                  type="button"
-                  onClick={() => {
-                    // 개발용 임시 로그인 - 무조건 로그인 처리
-                    login('dummy-token')
-                    navigate('/schedule')
-                  }}
-                  className="home-auth-button"
-                  style={{
-                    marginTop: '12px',
-                    background: '#6b7280',
-                    fontSize: '0.9rem'
-                  }}
-                >
-                  임시 로그인 (개발용)
-                </button>
               </>
             ) : (
               <form onSubmit={handleSignup}>
