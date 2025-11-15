@@ -68,7 +68,7 @@ function App() {
         <Route path="/withdrawal" element={<Withdrawal />} />
         <Route path="/change-password" element={<ChangePassword />} />
         <Route path="/contact" element={<Contact />} />
-        <Route path="/chat/:seniorId" element={<Chat />} />
+        <Route path="/chat/:roomId" element={<Chat />} />
         <Route
           path="/settings/notifications"
           element={<NotificationSettings />}
