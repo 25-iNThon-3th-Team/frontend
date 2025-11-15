@@ -58,7 +58,7 @@ function Career() {
   return (
     <div className="page-container">
       <div className="page-content">
-        <h1 className="page-title">🔍 진로탐색</h1>
+        <h1 className="page-title">진로탐색</h1>
         
         {/* Dashboard */}
         <Dashboard />

@@ -4,7 +4,7 @@ import { Course } from '../../types/career';
 import CourseModal from './CourseModal';
 
 function Roadmap() {
-  const { selectedTrack, allCourses, getCompletedCourseIds } = useCareerStore();
+  const { selectedTrack, allCourses, completedCourses, getCompletedCourseIds } = useCareerStore();
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [semesterGroups, setSemesterGroups] = useState<{ [key: string]: Course[] }>({});
@@ -44,7 +44,7 @@ function Roadmap() {
     });
 
     setSemesterGroups(groups);
-  }, [allCourses, completedCourseIds]);
+  }, [allCourses, completedCourses.length]); // completedCourses.length를 dependency로 사용하여 배열 내용 변경 감지
 
   const handleCourseClick = (course: Course) => {
     setSelectedCourse(course);
@@ -71,8 +71,8 @@ function Roadmap() {
 
   return (
     <>
-      <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-gray-200 mb-4">
-        <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-4">🗺️ 학습 로드맵</h2>
+      <div className="bg-white rounded-lg p-4 mb-3 border border-gray-100">
+        <h2 className="text-base font-semibold text-gray-900 mb-3">학습 로드맵</h2>
         
         <div className="space-y-3">
           {Object.keys(semesterGroups).length === 0 ? (
@@ -87,38 +87,38 @@ function Roadmap() {
               const completedCount = courses.filter(c => completedCourseIds.includes(c.courseId)).length;
               
               return (
-              <div key={semester} className="border border-gray-200 rounded-xl overflow-hidden">
+              <div key={semester} className="border border-indigo-200 rounded-lg overflow-hidden mb-2">
                 {/* Semester Header - Toggle Button */}
                 <button
                   onClick={() => toggleSemester(semesterNum)}
-                  className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-purple-50 to-blue-50 hover:from-purple-100 hover:to-blue-100 transition-colors"
+                  className="w-full flex items-center justify-between p-3 bg-gradient-to-r from-indigo-50 to-blue-50 hover:from-indigo-100 hover:to-blue-100 transition-colors border-b border-indigo-200"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-purple-500 text-white rounded-full flex items-center justify-center font-bold text-sm">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 bg-gradient-to-br from-indigo-600 to-blue-600 text-white rounded flex items-center justify-center font-semibold text-xs">
                       {semesterNum}
                     </div>
                     <div className="text-left">
-                      <h3 className="font-bold text-gray-800 text-base sm:text-lg">{semester}</h3>
+                      <h3 className="font-semibold text-gray-900 text-sm">{semester}</h3>
                       <div className="text-xs text-gray-600 mt-0.5">
-                        {courses.length > 0 ? `${courses.length}개 과목` : '과목 없음'} {completedCount > 0 && `• ${completedCount}개 이수 완료`}
+                        {courses.length > 0 ? `${courses.length}개 과목` : '과목 없음'} {completedCount > 0 && `· ${completedCount}개 완료`}
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center">
                     <svg
-                      className={`w-5 h-5 text-gray-600 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                      className={`w-4 h-4 text-indigo-600 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
                     >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
                     </svg>
                   </div>
                 </button>
 
                 {/* Courses in this semester - Collapsible */}
                 {isExpanded && (
-                <div className="p-4 space-y-3 bg-white">
+                <div className="p-3 space-y-2 bg-white">
                   {courses.map((course, index) => {
                     const isCompleted = completedCourseIds.includes(course.courseId);
                     const hasPrerequisites = course.prerequisites.length > 0;
@@ -127,77 +127,72 @@ function Roadmap() {
                     );
 
                     return (
-                      <div key={course.courseId} className="relative">
-                        {/* Prerequisite Arrow */}
-                        {hasPrerequisites && index > 0 && (
-                          <div className="absolute -left-4 top-0 bottom-0 w-0.5 bg-purple-300"></div>
-                        )}
-
+                      <div key={course.courseId}>
                         {/* Course Card */}
                         <button
                           onClick={() => handleCourseClick(course)}
-                          className={`w-full text-left p-4 rounded-xl border-2 transition-all active:scale-[0.98] ${
+                          className={`w-full text-left p-3 rounded-lg border transition-all active:scale-[0.99] ${
                             isCompleted
-                              ? 'bg-green-50 border-green-400'
+                              ? 'bg-gradient-to-r from-indigo-50 to-blue-50 border-indigo-300'
                               : completedPrereqs.length === course.prerequisites.length
-                              ? 'bg-white border-purple-300 hover:border-purple-400'
-                              : 'bg-gray-50 border-gray-300 opacity-60'
+                              ? 'bg-white border-indigo-200 hover:border-indigo-400 hover:bg-indigo-50'
+                              : 'bg-gray-50 border-gray-200 opacity-70'
                           }`}
                         >
-                          <div className="flex items-start justify-between mb-2">
+                          <div className="flex items-start justify-between mb-1.5">
                             <div className="flex-1">
-                              <div className="font-semibold text-sm sm:text-base text-gray-800 mb-1">
+                              <div className="font-medium text-sm text-gray-900 mb-0.5">
                                 {course.name}
                               </div>
-                              <div className="text-xs text-gray-600">{course.courseId}</div>
+                              <div className="text-xs text-gray-500">{course.courseId}</div>
                             </div>
                             {isCompleted && (
-                              <div className="ml-2 text-green-600">
-                                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                              <div className="ml-2 text-gray-600">
+                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                                 </svg>
                               </div>
                             )}
                           </div>
 
                           {/* Course Info */}
-                          <div className="flex flex-wrap items-center gap-3 text-xs text-gray-600 mb-2">
+                          <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 mb-2">
                             <span>{course.credits}학점</span>
-                            <span>•</span>
+                            <span>·</span>
                             <span>{course.professor}</span>
-                            <span>•</span>
-                            <span className={`px-2 py-0.5 rounded ${
-                              course.type === '전필' ? 'bg-blue-100 text-blue-700' :
-                              course.type === '전선' ? 'bg-green-100 text-green-700' :
-                              'bg-yellow-100 text-yellow-700'
+                            <span>·</span>
+                            <span className={`px-1.5 py-0.5 rounded border ${
+                              course.type === '전필' ? 'bg-white border-gray-300 text-gray-700' :
+                              course.type === '전선' ? 'bg-white border-gray-300 text-gray-700' :
+                              'bg-white border-gray-300 text-gray-700'
                             }`}>
                               {course.type}
                             </span>
                           </div>
 
                           {/* Difficulty & Workload */}
-                          <div className="flex items-center gap-4 mb-2">
+                          <div className="flex items-center gap-3 mb-2">
                             <div className="flex items-center gap-1">
-                              <span className="text-xs text-gray-500">난이도:</span>
+                              <span className="text-xs text-gray-500">난이도</span>
                               <div className="flex gap-0.5">
                                 {[...Array(5)].map((_, i) => (
                                   <div
                                     key={i}
-                                    className={`w-2 h-2 rounded-full ${
-                                      i < course.difficulty ? 'bg-red-400' : 'bg-gray-200'
+                                    className={`w-1.5 h-1.5 rounded-full ${
+                                      i < course.difficulty ? 'bg-gray-700' : 'bg-gray-300'
                                     }`}
                                   />
                                 ))}
                               </div>
                             </div>
                             <div className="flex items-center gap-1">
-                              <span className="text-xs text-gray-500">작업량:</span>
+                              <span className="text-xs text-gray-500">작업량</span>
                               <div className="flex gap-0.5">
                                 {[...Array(5)].map((_, i) => (
                                   <div
                                     key={i}
-                                    className={`w-2 h-2 rounded-full ${
-                                      i < course.workload ? 'bg-blue-400' : 'bg-gray-200'
+                                    className={`w-1.5 h-1.5 rounded-full ${
+                                      i < course.workload ? 'bg-gray-700' : 'bg-gray-300'
                                     }`}
                                   />
                                 ))}
@@ -207,18 +202,18 @@ function Roadmap() {
 
                           {/* Prerequisites */}
                           {hasPrerequisites && (
-                            <div className="mt-2 pt-2 border-t border-gray-200">
-                              <div className="text-xs text-gray-500 mb-1">선수과목:</div>
+                            <div className="mt-1.5 pt-1.5 border-t border-gray-200">
+                              <div className="text-xs text-gray-500 mb-1">선수과목</div>
                               <div className="flex flex-wrap gap-1">
                                 {course.prerequisites.map((prereqId) => {
                                   const isPrereqCompleted = completedCourseIds.includes(prereqId);
                                   return (
                                     <span
                                       key={prereqId}
-                                      className={`px-2 py-0.5 rounded text-xs ${
+                                      className={`px-1.5 py-0.5 rounded text-xs border ${
                                         isPrereqCompleted
-                                          ? 'bg-green-100 text-green-700'
-                                          : 'bg-gray-100 text-gray-600'
+                                          ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
+                                          : 'bg-white border-indigo-200 text-indigo-600'
                                       }`}
                                     >
                                       {prereqId}
@@ -228,11 +223,6 @@ function Roadmap() {
                               </div>
                             </div>
                           )}
-
-                          {/* Tap hint */}
-                          <div className="mt-2 text-xs text-gray-400">
-                            탭하여 상세 정보 보기 →
-                          </div>
                         </button>
                       </div>
                     );
@@ -246,18 +236,18 @@ function Roadmap() {
         </div>
 
         {/* Legend */}
-        <div className="mt-6 pt-4 border-t border-gray-200">
-          <div className="flex flex-wrap items-center gap-4 text-xs text-gray-600">
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-green-50 border-2 border-green-400 rounded-lg"></div>
+        <div className="mt-4 pt-3 border-t border-gray-100">
+          <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-3 bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-300 rounded"></div>
               <span>이수 완료</span>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-white border-2 border-purple-300 rounded-lg"></div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-3 bg-white border border-indigo-200 rounded"></div>
               <span>수강 가능</span>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-gray-50 border-2 border-gray-300 rounded-lg opacity-60"></div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-3 bg-gray-50 border border-gray-200 rounded opacity-60"></div>
               <span>선수과목 필요</span>
             </div>
           </div>
