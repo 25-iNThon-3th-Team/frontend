@@ -91,9 +91,7 @@ const ProfileCard = ({ profile, onSave, onInputChange, onLogout, onLogin }) => {
               <input
                 type="text"
                 value={profile.studentId}
-                onChange={(e) =>
-                  onInputChange("studentId", e.target.value)
-                }
+                onChange={(e) => onInputChange("studentId", e.target.value)}
                 placeholder="학번"
                 className="w-full px-3 py-2 mb-2 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400"
               />

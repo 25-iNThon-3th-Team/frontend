@@ -36,6 +36,7 @@ function MyPage() {
   const handleSave = async () => {
     try {
       const response = await axios.put("/api/users/me", {
+        username: profile.name || "",
         grade: profile.grade || 0,
         semester: profile.semester || 0,
         majorCode: profile.major || "",
@@ -96,6 +97,7 @@ function MyPage() {
     try {
       // Assuming a similar API endpoint for preferences
       const response = await axios.put("/api/users/me", {
+        username: profile.name || "",
         grade: profile.grade || 0,
         semester: profile.semester || 0,
         majorCode: profile.major || "",
@@ -131,9 +133,7 @@ function MyPage() {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const response = await axios.get(
-          "http://inthon.fjey.me:8080/api/users/me"
-        );
+        const response = await axios.get("/api/users/me");
         const userData = response.data;
 
         setProfile((prevProfile) => ({
