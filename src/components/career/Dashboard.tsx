@@ -1,13 +1,33 @@
 import { useCareerStore } from '../../store/careerStore';
+import {useEffect, useState} from "react";
+import {Course} from "../../types/career.ts";
+import axios from "../../api/axios";
 
 function Dashboard() {
-  const { completedCourses, getTotalCredits } = useCareerStore();
-  
+  // const { completedCourses, getTotalCredits } = useCareerStore();
+
+    const [completedCourses, setCompletedCourses] = useState<Course[]>([]);
+
+    const getTotalCredits = () => {
+        return completedCourses
+            .map((course) => course.credits)
+            .reduce((prev, next) => prev + next, 0);
+    }
   const totalCredits = getTotalCredits();
+
+    useEffect(() => {
+        const fetchData = async () => {
+            const response = await axios.get("/api/jinro/courses");
+            setCompletedCourses(response.data);
+            console.log(response.data);
+        }
+        fetchData()
+    }, []);
+
   const courseBreakdown = {
-    전필: completedCourses.filter(c => c.type === '전필').length,
-    전선: completedCourses.filter(c => c.type === '전선').length,
-    교양: completedCourses.filter(c => c.type === '교양').length,
+    전필: completedCourses.filter(c => c.creditType === 'MAJOR_REQUIRED').length,
+    전선: completedCourses.filter(c => c.creditType === 'MAJOR_ELECTIVE').length,
+    교양: completedCourses.filter(c => c.creditType === '교양').length,
   };
 
   return (
@@ -18,7 +38,8 @@ function Dashboard() {
         {/* Total Credits */}
         <div className="bg-gradient-to-br from-indigo-50 to-blue-50 dark:!from-gray-800 dark:!to-gray-700 rounded-lg p-3.5 border border-indigo-200 dark:border-gray-600">
           <div className="text-xs text-indigo-600 dark:text-indigo-400 mb-0.5">총 이수학점 / 졸업 요구 학점</div>
-          <div className="text-2xl font-semibold text-blue-400">34 <span className="text-base text-indigo-500 dark:text-indigo-400">/</span> 130<span className="text-base text-indigo-600 dark:text-indigo-400 ml-1">학점</span></div>
+          <div className="text-2xl font-semibold text-blue-400">{getTotalCredits()} <span className="text-base text-indigo-500 dark:text-indigo-400">/</span> 130<span className="text-base text-indigo-600 dark:text-indigo-400 ml-1">학점</span></div>
+
         </div>
 
         {/* Course Breakdown */}

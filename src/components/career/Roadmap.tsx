@@ -23,6 +23,19 @@ function Roadmap() {
     );
   }, [currentSemester]);
 
+  const trackCourseSet = useMemo(() => {
+    if (!selectedTrack) {
+      return null;
+    }
+    const trackCourseIds = Array.from(
+      new Set([
+        ...selectedTrack.requiredCourses,
+        ...selectedTrack.optionalCourses
+      ])
+    );
+    return new Set(trackCourseIds);
+  }, [selectedTrack]);
+
   useEffect(() => {
     if (allCourses.length === 0) {
       setSemesterGroups({});
@@ -76,17 +89,78 @@ function Roadmap() {
       return semesterGroups[semesterKey] || [];
     });
 
-    return focusCourses
+    const baseCandidates = focusCourses
       .filter((course) => {
         if (completedCourseIds.includes(course.courseId)) {
           return false;
         }
-        const completedPrereqs = course.prerequisites.filter((id) => completedCourseIds.includes(id));
+        const completedPrereqs = course.prerequisites.filter((id) =>
+          completedCourseIds.includes(id)
+        );
         return completedPrereqs.length === course.prerequisites.length;
       })
-      .sort((a, b) => b.difficulty - a.difficulty)
-      .slice(0, 4);
-  }, [completedCourseIds, focusSemesters, semesterGroups]);
+      .sort((a, b) => b.difficulty - a.difficulty);
+
+    if (!selectedTrack || !trackCourseSet || trackCourseSet.size === 0) {
+      return baseCandidates.slice(0, 4);
+    }
+
+    const isRequiredCourse = (courseId: string) =>
+      selectedTrack.requiredCourses.includes(courseId);
+    const isTrackCourse = (courseId: string) => trackCourseSet.has(courseId);
+    const prerequisitesReady = (course: Course) =>
+      course.prerequisites.every((id) => completedCourseIds.includes(id));
+    const semesterValue = (course: Course) => course.semester ?? 99;
+
+    const sortByTrackPriority = (courses: Course[]) =>
+      [...courses].sort((a, b) => {
+        const requiredDiff =
+          Number(isRequiredCourse(b.courseId)) - Number(isRequiredCourse(a.courseId));
+        if (requiredDiff !== 0) {
+          return requiredDiff;
+        }
+
+        const readinessDiff = Number(prerequisitesReady(b)) - Number(prerequisitesReady(a));
+        if (readinessDiff !== 0) {
+          return readinessDiff;
+        }
+
+        const semesterDiff = semesterValue(a) - semesterValue(b);
+        if (semesterDiff !== 0) {
+          return semesterDiff;
+        }
+
+        return b.difficulty - a.difficulty;
+      });
+
+    const matchedInFocus = sortByTrackPriority(
+      baseCandidates.filter((course) => isTrackCourse(course.courseId))
+    );
+
+    if (matchedInFocus.length >= 4) {
+      return matchedInFocus.slice(0, 4);
+    }
+
+    const remainingSlots = 4 - matchedInFocus.length;
+
+    const broaderTrackPool = sortByTrackPriority(
+      allCourses
+        .filter(
+          (course) =>
+            isTrackCourse(course.courseId) && !completedCourseIds.includes(course.courseId)
+        )
+        .filter((course) => !matchedInFocus.some((item) => item.courseId === course.courseId))
+    );
+
+    return matchedInFocus.concat(broaderTrackPool.slice(0, remainingSlots));
+  }, [
+    allCourses,
+    completedCourseIds,
+    focusSemesters,
+    selectedTrack,
+    semesterGroups,
+    trackCourseSet
+  ]);
 
   const handleCourseClick = (course: Course) => {
     setSelectedCourse(course);
@@ -273,65 +347,115 @@ function Roadmap() {
     <div className="space-y-4">
       <div className="rounded-2xl border border-indigo-100 dark:border-gray-600 bg-gradient-to-br from-indigo-50 to-blue-50 dark:!from-gray-800 dark:!to-gray-700 p-4">
         <div className="flex flex-col gap-1 mb-3">
-          <span className="text-xs font-semibold uppercase tracking-wide text-indigo-600 dark:text-indigo-400">지금 집중하면 좋은 과목</span>
+          <span className="text-xs font-semibold uppercase tracking-wide text-indigo-600 dark:text-indigo-400">
+            지금 집중하면 좋은 과목
+          </span>
           <p className="text-sm text-indigo-900 dark:text-indigo-200">
             현재 학기를 기준으로 바로 수강할 수 있는 핵심 과목을 추천해 드려요.
           </p>
         </div>
 
+        {selectedTrack ? (
+          <div className="mb-4 rounded-xl border border-indigo-200 dark:border-indigo-600 bg-white/70 dark:bg-gray-800/70 p-3">
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <div className="text-xs font-semibold text-indigo-600 dark:text-indigo-300">선택한 진로</div>
+              <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-200">
+                맞춤 로드맵
+              </span>
+            </div>
+            <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">{selectedTrack.name}</div>
+            <p className="mt-1 text-xs text-gray-600 dark:text-gray-300 leading-relaxed line-clamp-2">
+              {selectedTrack.description}
+            </p>
+          </div>
+        ) : (
+          <div className="mb-4 rounded-xl border border-dashed border-indigo-200 dark:border-gray-600 bg-white/60 dark:bg-gray-800/60 p-3 text-xs text-gray-600 dark:text-gray-300">
+            관심 있는 진로 카드를 선택하면 해당 트랙에 맞춘 학습 로드맵을 바로 확인할 수 있어요.
+          </div>
+        )}
+
         {focusRecommendations.length > 0 ? (
           <div className="grid gap-2 md:grid-cols-2">
-            {focusRecommendations.map((course) => (
-              <button
-                key={course.courseId}
-                onClick={() => handleCourseClick(course)}
-                className="w-full rounded-xl border border-indigo-200 dark:border-indigo-700 bg-white/80 dark:bg-gray-800/80 p-3 text-left shadow-sm transition hover:border-indigo-400 dark:hover:border-indigo-600 hover:bg-white dark:hover:bg-gray-700"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">{course.name}</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{course.courseId}</div>
+            {focusRecommendations.map((course) => {
+              const completedPrereqs = course.prerequisites.filter((id) =>
+                completedCourseIds.includes(id)
+              );
+              const prereqsSatisfied = completedPrereqs.length === course.prerequisites.length;
+              const isCompleted = completedCourseIds.includes(course.courseId);
+              const isTrackCourse = Boolean(trackCourseSet?.has(course.courseId));
+              const isTrackRequired =
+                isTrackCourse && selectedTrack?.requiredCourses.includes(course.courseId);
+
+              let statusLabel = '수강 가능';
+              let statusClass = 'text-emerald-600 dark:text-emerald-400';
+
+              if (isCompleted) {
+                statusLabel = '수강 완료';
+                statusClass = 'text-emerald-600 dark:text-emerald-400';
+              } else if (!prereqsSatisfied) {
+                statusLabel = '선수 과목 필요';
+                statusClass = 'text-amber-500 dark:text-yellow-300';
+              } else if (course.semester && course.semester > currentSemester + 1) {
+                statusLabel = `${course.semester}학기 예정`;
+                statusClass = 'text-indigo-600 dark:text-indigo-400';
+              }
+
+              return (
+                <button
+                  key={course.courseId}
+                  onClick={() => handleCourseClick(course)}
+                  className="w-full rounded-xl border border-indigo-200 dark:border-indigo-700 bg-white/80 dark:bg-gray-800/80 p-3 text-left shadow-sm transition hover:border-indigo-400 dark:hover:border-indigo-600 hover:bg-white dark:hover:bg-gray-700"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                        {course.name}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                        {course.courseId}
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                      <span className="rounded-full bg-indigo-50 dark:bg-indigo-900 px-2 py-0.5 text-xs font-medium text-indigo-600 dark:text-indigo-300">
+                        추천
+                      </span>
+                      {selectedTrack && isTrackCourse && (
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                            isTrackRequired
+                              ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-200'
+                              : 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-200'
+                          }`}
+                        >
+                          {isTrackRequired ? '필수' : '선택'}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <span className="rounded-full bg-indigo-50 dark:bg-indigo-900 px-2 py-0.5 text-xs font-medium text-indigo-600 dark:text-indigo-300">추천</span>
-                </div>
-                <div className="mt-3 flex flex-col gap-2 text-xs">
-                  <div className="flex items-center justify-between rounded-lg border border-indigo-100 dark:border-indigo-800 bg-indigo-50/60 dark:bg-indigo-900/60 px-3 py-2">
-                    <span className="font-semibold text-indigo-500 dark:text-indigo-400">학점</span>
-                    <span className="font-semibold text-gray-900 dark:text-gray-100">{course.credits}학점</span>
+                  <div className="mt-3 flex flex-col gap-2 text-xs">
+                    <div className="flex items-center justify-between rounded-lg border border-indigo-100 dark:border-indigo-800 bg-indigo-50/60 dark:bg-indigo-900/60 px-3 py-2">
+                      <span className="font-semibold text-indigo-500 dark:text-indigo-400">학점</span>
+                      <span className="font-semibold text-gray-900 dark:text-gray-100">{course.credits}학점</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 px-3 py-2">
+                      <span className="font-semibold text-gray-500 dark:text-gray-400">구분</span>
+                      <span className="font-semibold text-gray-900 dark:text-gray-100">{course.type}</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-lg border border-indigo-200 dark:border-indigo-700 bg-white dark:bg-gray-800 px-3 py-2">
+                      <span className="font-semibold text-gray-500 dark:text-gray-400">상태</span>
+                      <span className={`font-semibold ${statusClass}`}>{statusLabel}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 px-3 py-2">
-                    <span className="font-semibold text-gray-500 dark:text-gray-400">구분</span>
-                    <span className="font-semibold text-gray-900 dark:text-gray-100">{course.type}</span>
-                  </div>
-                  <div className="flex items-center justify-between rounded-lg border border-indigo-200 dark:border-indigo-700 bg-white dark:bg-gray-800 px-3 py-2">
-                    <span className="font-semibold text-gray-500 dark:text-gray-400">상태</span>
-                    <span className={`font-semibold ${course.prerequisites.length > 0 ? 'text-indigo-600 dark:text-indigo-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                      {course.prerequisites.length > 0 ? '수강 가능' : '기초 과목'}
-                    </span>
-                  </div>
-                </div>
-              </button>
-            ))}
+                </button>
+              );
+            })}
           </div>
         ) : (
           <div className="rounded-xl border border-dashed border-indigo-200 dark:border-indigo-700 bg-white/80 dark:bg-gray-800/80 p-4 text-sm text-indigo-800 dark:text-indigo-300">
-            아직 바로 들을 수 있는 추천 과목이 없어요. 필요한 선수과목을 조금만 더 채워보세요!
+            {selectedTrack
+              ? `${selectedTrack.name} 트랙에 맞춰 지금 바로 들을 수 있는 과목이 없어요. 필요한 선수 과목을 먼저 이수해보세요!`
+              : '아직 바로 들을 수 있는 추천 과목이 없어요. 필요한 선수과목을 조금만 더 채워보세요!'}
           </div>
-        )}
-      </div>
-
-      <div className="space-y-2">
-        <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-          <span className="font-medium text-gray-700 dark:text-gray-300">현재 학기 기준</span>
-          {focusSemesters[1] !== undefined && focusSemesters[1] !== currentSemester && (
-            <>
-              <span>·</span>
-              <span>다음 학기</span>
-            </>
-          )}
-        </div>
-        {focusSemesters.map((semesterNumber, index) =>
-          renderSemesterSection(semesterNumber, index === 0 ? 'current' : 'next')
         )}
       </div>
     </div>
@@ -352,24 +476,6 @@ function Roadmap() {
         ) : (
           renderFocusView()
         )}
-
-        {/* Legend */}
-        <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700">
-          <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 bg-gradient-to-br from-indigo-50 to-blue-50 dark:!from-gray-800 dark:!to-gray-700 border border-indigo-300 dark:border-gray-600 rounded"></div>
-              <span>이수 완료</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 bg-white dark:bg-gray-700 border border-indigo-200 dark:border-indigo-700 rounded"></div>
-              <span>수강 가능</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded opacity-60"></div>
-              <span>선수과목 필요</span>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Course Modal */}
