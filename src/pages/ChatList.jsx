@@ -114,7 +114,7 @@ function ChatList() {
   return (
     <div className="page-container">
       <div className="page-content">
-        <h1 className="page-title">💬 채팅</h1>
+        <h1 className="page-title">채팅</h1>
         
         {/* 검색 바 및 필터 */}
         {chats.length > 0 && (
