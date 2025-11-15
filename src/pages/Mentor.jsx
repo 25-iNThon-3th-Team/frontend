@@ -135,12 +135,19 @@ function Mentor() {
   return (
     <div className="page-container">
       <div className="page-content">
-        <h1 className="page-title">👥 선배 연결</h1>
+        <h1 className="page-title">선배 연결</h1>
         
         {/* 필터 섹션 - 교수님별 */}
-        <div className="filter-section">
+        <div className="mb-3">
           <select 
-            className="filter-select full-width"
+            className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg bg-white text-gray-900 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 appearance-none cursor-pointer"
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%234F46E5' d='M6 9L1 4h10z'/%3E%3C/svg%3E")`,
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'right 12px center',
+              backgroundSize: '12px',
+              paddingRight: '36px'
+            }}
             value={selectedProfessor}
             onChange={(e) => setSelectedProfessor(e.target.value)}
           >
@@ -154,42 +161,47 @@ function Mentor() {
         </div>
 
         {/* 안내 문구 */}
-        <div className="privacy-notice">
-          <span className="privacy-icon">💬</span>
-          <span className="privacy-text">수강을 고민 중인 수업의 선수강자 선배들과 연결되어 실제 후기와 조언을 받아보세요.</span>
+        <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200 rounded-lg px-3.5 py-2.5 mb-3">
+          <span className="text-xs text-gray-700 leading-relaxed">수강을 고민 중인 수업의 선수강자 선배들과 연결되어 실제 후기와 조언을 받아보세요.</span>
         </div>
 
         {/* 선배 목록 */}
         {filteredSeniors.length === 0 ? (
-          <div className="empty-state">
-            <p>선택하신 교수님의 수업을 수강한 선배가 없습니다.</p>
+          <div className="bg-white rounded-lg p-4 border border-gray-100 text-center">
+            <p className="text-sm text-gray-500">선택하신 교수님의 수업을 수강한 선배가 없습니다.</p>
           </div>
         ) : (
-          <div className="senior-list">
+          <div className="space-y-2.5">
             {filteredSeniors.map((senior) => (
               <div 
                 key={`${senior.professorId}-${senior.id}`} 
-                className="senior-card"
+                className="bg-white rounded-lg p-3 border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 transition-all cursor-pointer active:scale-[0.99]"
                 onClick={() => handleSeniorClick(senior.id, senior.professorId)}
               >
-                <div className="senior-profile">
-                  <div className="senior-avatar">{senior.profileImage}</div>
-                  <div className="senior-info">
-                    <div className="senior-name-row">
-                      <h3 className="senior-name">{senior.name}</h3>
-                      <span className="verified-badge">✓</span>
+                <div className="flex gap-3 items-start">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-100 to-blue-100 border border-indigo-200 flex items-center justify-center text-lg flex-shrink-0">
+                    {senior.profileImage}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <h3 className="text-sm font-semibold text-gray-900">{senior.name}</h3>
+                      <svg className="w-3.5 h-3.5 text-indigo-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
                     </div>
-                    <p className="senior-education">
+                    <p className="text-xs text-gray-600 mb-1.5">
                       {senior.major} {senior.year}
                     </p>
-                    <div className="senior-course-info">
-                      <span className="course-tag">
-                        📚 {senior.subject} - {senior.professorName}
+                    <div className="mb-2">
+                      <span className="text-xs px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded border border-indigo-200 inline-block">
+                        {senior.subject} - {senior.professorName}
                       </span>
                     </div>
-                    <div className="senior-badges">
+                    <div className="flex flex-wrap gap-1.5">
                       {senior.tags.map((tag, idx) => (
-                        <span key={idx} className="badge">{tag}</span>
+                        <span key={idx} className="text-xs px-2 py-0.5 bg-white text-indigo-700 rounded border border-indigo-200">
+                          {tag}
+                        </span>
                       ))}
                     </div>
                   </div>

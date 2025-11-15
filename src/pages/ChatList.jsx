@@ -51,15 +51,15 @@ function ChatList() {
   return (
     <div className="page-container">
       <div className="page-content">
-        <h1 className="page-title">💬 채팅</h1>
+        <h1 className="page-title">채팅</h1>
         
         {chats.length === 0 ? (
-          <div className="empty-state">
-            <p>아직 대화한 선배가 없습니다.</p>
-            <p className="empty-state-hint">선배 연결에서 선배를 선택하여 대화를 시작해보세요!</p>
+          <div className="bg-white rounded-lg p-4 border border-gray-100 text-center">
+            <p className="text-sm text-gray-500 mb-1">아직 대화한 선배가 없습니다.</p>
+            <p className="text-xs text-gray-400">선배 연결에서 선배를 선택하여 대화를 시작해보세요!</p>
           </div>
         ) : (
-          <div className="chat-list">
+          <div className="space-y-2.5">
             {chats.map((chat) => {
               const senior = seniorData[chat.seniorId]
               if (!senior) return null
@@ -67,22 +67,28 @@ function ChatList() {
               return (
                 <div
                   key={chat.seniorId}
-                  className="chat-item"
+                  className="bg-white rounded-lg p-3 border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 transition-all cursor-pointer active:scale-[0.99]"
                   onClick={() => handleChatClick(chat.seniorId)}
                 >
-                  <div className="chat-item-avatar">{senior.profileImage}</div>
-                  <div className="chat-item-content">
-                    <div className="chat-item-header">
-                      <h3 className="chat-item-name">{senior.name}</h3>
-                      <span className="chat-item-time">{chat.lastTime}</span>
+                  <div className="flex gap-3 items-start">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-100 to-blue-100 border border-indigo-200 flex items-center justify-center text-lg flex-shrink-0">
+                      {senior.profileImage}
                     </div>
-                    <div className="chat-item-info">
-                      <span className="chat-item-course">{senior.subject} - {senior.professorName}</span>
-                      {chat.unread > 0 && (
-                        <span className="chat-item-unread">{chat.unread}</span>
-                      )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <h3 className="text-sm font-semibold text-gray-900">{senior.name}</h3>
+                        <span className="text-xs text-gray-500 flex-shrink-0 ml-2">{chat.lastTime}</span>
+                      </div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-xs text-gray-600">{senior.subject} - {senior.professorName}</span>
+                        {chat.unread > 0 && (
+                          <span className="bg-indigo-600 text-white text-xs font-medium px-2 py-0.5 rounded-full min-w-[20px] text-center flex-shrink-0 ml-2">
+                            {chat.unread}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-600 line-clamp-1">{chat.lastMessage}</p>
                     </div>
-                    <p className="chat-item-preview">{chat.lastMessage}</p>
                   </div>
                 </div>
               )
