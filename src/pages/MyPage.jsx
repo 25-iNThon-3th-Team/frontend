@@ -1,6 +1,13 @@
-import '../App.css'
+import { useNavigate } from "react-router-dom";
+import "../App.css";
 
 function MyPage() {
+  const navigate = useNavigate();
+
+  const handleMenuClick = (path) => {
+    navigate(path);
+  };
+
   return (
     <div className="page-container">
       <div className="page-content">
@@ -12,16 +19,25 @@ function MyPage() {
             <p className="profile-email">user@example.com</p>
           </div>
           <div className="menu-list">
-            <div className="menu-item">📚 내 시간표</div>
-            <div className="menu-item">💬 내 메시지</div>
+            <div
+              className="menu-item"
+              onClick={() => handleMenuClick("/schedule")}
+            >
+              📚 내 시간표
+            </div>
+            <div
+              className="menu-item"
+              onClick={() => handleMenuClick("/mymessage")}
+            >
+              💬 내 메시지
+            </div>
             <div className="menu-item">⚙️ 설정</div>
             <div className="menu-item">📞 고객지원</div>
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 }
 
-export default MyPage
-
+export default MyPage;
