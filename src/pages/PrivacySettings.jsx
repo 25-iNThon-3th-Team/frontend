@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "../App.css";
+
+const PRIVACY_SETTINGS_KEY = "privacySettings";
 
 function PrivacySettings() {
   const navigate = useNavigate();
@@ -11,17 +13,41 @@ function PrivacySettings() {
     allowMessages: true,
   });
 
+  // 설정 불러오기 (localStorage에서)
+  useEffect(() => {
+    const savedSettings = localStorage.getItem(PRIVACY_SETTINGS_KEY);
+    if (savedSettings) {
+      try {
+        const parsed = JSON.parse(savedSettings);
+        setSettings({
+          profileVisibility: parsed.profileVisibility || "public",
+          showEmail: parsed.showEmail ?? false,
+          showSchedule: parsed.showSchedule ?? true,
+          allowMessages: parsed.allowMessages ?? true,
+        });
+      } catch (error) {
+        console.error("개인정보 공개 설정 불러오기 에러:", error);
+      }
+    }
+  }, []);
+
   const handleToggle = (key) => {
-    setSettings({ ...settings, [key]: !settings[key] });
+    const newSettings = { ...settings, [key]: !settings[key] };
+    setSettings(newSettings);
+    // 즉시 localStorage에 저장
+    localStorage.setItem(PRIVACY_SETTINGS_KEY, JSON.stringify(newSettings));
   };
 
   const handleVisibilityChange = (value) => {
-    setSettings({ ...settings, profileVisibility: value });
+    const newSettings = { ...settings, profileVisibility: value };
+    setSettings(newSettings);
+    // 즉시 localStorage에 저장
+    localStorage.setItem(PRIVACY_SETTINGS_KEY, JSON.stringify(newSettings));
   };
 
   const handleSave = () => {
-    // API 호출하여 설정 저장
-    console.log("개인정보 공개 설정 저장:", settings);
+    // localStorage에 저장
+    localStorage.setItem(PRIVACY_SETTINGS_KEY, JSON.stringify(settings));
     alert("개인정보 공개 설정이 저장되었습니다.");
     navigate("/mypage");
   };

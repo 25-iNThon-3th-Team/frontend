@@ -1,7 +1,8 @@
 import axios from "axios";
 
 // 백엔드 API base URL
-const BASE_URL = "/api";
+// 환경 변수에서 가져오거나 기본값 사용
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
 // axios 인스턴스 생성
 const axiosInstance = axios.create({

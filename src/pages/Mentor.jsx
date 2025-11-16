@@ -1,152 +1,43 @@
-import { useState, useMemo } from 'react'
+import {useState, useMemo, useEffect} from 'react'
 import { useNavigate } from 'react-router-dom'
 import '../App.css'
+import axios from '../api/axios.js'
 
 function Mentor() {
   const navigate = useNavigate()
   const [searchQuery, setSearchQuery] = useState('')
   const [expandedSeniors, setExpandedSeniors] = useState(new Set())
 
-  // 선배별 수업 데이터 구조 (같은 선배가 여러 수업을 들을 수 있음)
-  // 수업 7개: 자료구조, 알고리즘, 데이터베이스, 웹프로그래밍, 운영체제, 컴퓨터네트워크, 컴퓨터구조
-  // 교수님 10명: 같은 수업에 여러 교수님이 있도록 구성
-  const seniorsData = [
-    {
-      id: 1,
-      name: '김선배',
-      major: '컴퓨터공학과',
-      year: '20학번',
-      profileImage: '👨‍💻',
-      courses: [
-        { subject: '자료구조', professorName: '김교수', professorId: 'prof1' },
-        { subject: '알고리즘', professorName: '박교수', professorId: 'prof2' },
-        { subject: '운영체제', professorName: '정교수', professorId: 'prof5' }
-      ]
-    },
-    {
-      id: 2,
-      name: '이선배',
-      major: '컴퓨터공학과',
-      year: '21학번',
-      profileImage: '👩‍💼',
-      courses: [
-        { subject: '자료구조', professorName: '김교수', professorId: 'prof1' },
-        { subject: '자료구조', professorName: '이교수', professorId: 'prof1-2' }, // 같은 과목 다른 교수님
-        { subject: '데이터베이스', professorName: '이교수', professorId: 'prof3' },
-        { subject: '컴퓨터네트워크', professorName: '한교수', professorId: 'prof6' }
-      ]
-    },
-    {
-      id: 3,
-      name: '박선배',
-      major: '컴퓨터공학과',
-      year: '19학번',
-      profileImage: '👨‍🎓',
-      courses: [
-        { subject: '알고리즘', professorName: '박교수', professorId: 'prof2' },
-        { subject: '알고리즘', professorName: '최교수', professorId: 'prof2-2' }, // 같은 과목 다른 교수님
-        { subject: '컴퓨터구조', professorName: '송교수', professorId: 'prof7' }
-      ]
-    },
-    {
-      id: 4,
-      name: '최선배',
-      major: '컴퓨터공학과',
-      year: '20학번',
-      profileImage: '👩‍🎓',
-      courses: [
-        { subject: '알고리즘', professorName: '박교수', professorId: 'prof2' },
-        { subject: '웹프로그래밍', professorName: '최교수', professorId: 'prof4' },
-        { subject: '웹프로그래밍', professorName: '조교수', professorId: 'prof4-2' } // 같은 과목 다른 교수님
-      ]
-    },
-    {
-      id: 5,
-      name: '정선배',
-      major: '컴퓨터공학과',
-      year: '18학번',
-      profileImage: '👨‍💻',
-      courses: [
-        { subject: '데이터베이스', professorName: '이교수', professorId: 'prof3' },
-        { subject: '데이터베이스', professorName: '강교수', professorId: 'prof3-2' }, // 같은 과목 다른 교수님
-        { subject: '운영체제', professorName: '정교수', professorId: 'prof5' }
-      ]
-    },
-    {
-      id: 6,
-      name: '강선배',
-      major: '컴퓨터공학과',
-      year: '21학번',
-      profileImage: '👩‍💼',
-      courses: [
-        { subject: '데이터베이스', professorName: '이교수', professorId: 'prof3' },
-        { subject: '운영체제', professorName: '정교수', professorId: 'prof5' },
-        { subject: '운영체제', professorName: '윤교수', professorId: 'prof5-2' } // 같은 과목 다른 교수님
-      ]
-    },
-    {
-      id: 7,
-      name: '윤선배',
-      major: '컴퓨터공학과',
-      year: '20학번',
-      profileImage: '👨‍🎓',
-      courses: [
-        { subject: '웹프로그래밍', professorName: '최교수', professorId: 'prof4' },
-        { subject: '컴퓨터네트워크', professorName: '한교수', professorId: 'prof6' },
-        { subject: '컴퓨터네트워크', professorName: '임교수', professorId: 'prof6-2' } // 같은 과목 다른 교수님
-      ]
-    },
-    {
-      id: 8,
-      name: '조선배',
-      major: '컴퓨터공학과',
-      year: '19학번',
-      profileImage: '👩‍💻',
-      courses: [
-        { subject: '운영체제', professorName: '정교수', professorId: 'prof5' },
-        { subject: '컴퓨터구조', professorName: '송교수', professorId: 'prof7' },
-        { subject: '컴퓨터구조', professorName: '오교수', professorId: 'prof7-2' } // 같은 과목 다른 교수님
-      ]
-    },
-    {
-      id: 9,
-      name: '한선배',
-      major: '컴퓨터공학과',
-      year: '21학번',
-      profileImage: '👨‍💼',
-      courses: [
-        { subject: '컴퓨터네트워크', professorName: '한교수', professorId: 'prof6' },
-        { subject: '자료구조', professorName: '신교수', professorId: 'prof1-3' }, // 같은 과목 다른 교수님
-        { subject: '컴퓨터구조', professorName: '송교수', professorId: 'prof7' }
-      ]
-    },
-    {
-      id: 10,
-      name: '송선배',
-      major: '컴퓨터공학과',
-      year: '20학번',
-      profileImage: '👩‍🎓',
-      courses: [
-        { subject: '컴퓨터구조', professorName: '송교수', professorId: 'prof7' },
-        { subject: '알고리즘', professorName: '배교수', professorId: 'prof2-3' }, // 같은 과목 다른 교수님
-        { subject: '데이터베이스', professorName: '강교수', professorId: 'prof3-2' }
-      ]
-    }
-  ]
+    const [majors, setMajors] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [user, setUser] = useState({});
+
+  useEffect(() => {
+      const fetchData = async () => {
+          const majorsResp = await axios.get('/api/majors');
+          setMajors(majorsResp.data);
+          const userResp = await axios.get('/api/users/me');
+          setUser(userResp.data);
+          const usersResp = await axios.get('/api/connect');
+          setUsers(usersResp.data.filter(item => item.user.id.toString() !== userResp.data.id.toString()));
+      }
+      fetchData()
+  }, [])
 
   // 검색어로 필터링된 선배 목록
   const filteredSeniors = useMemo(() => {
+      console.log(users);
     if (!searchQuery.trim()) {
-      return seniorsData
+      return users
     }
     
     const query = searchQuery.toLowerCase()
     
-    return seniorsData
+    return users
       .map(senior => {
         // 검색어와 일치하는 수업만 필터링
-        const matchedCourses = senior.courses.filter(course => 
-          course.subject.toLowerCase().includes(query) ||
+        const matchedCourses = senior.courses.filter(course =>
+          course.course.name.toLowerCase().includes(query) ||
           course.professorName.toLowerCase().includes(query)
         )
         
@@ -160,7 +51,7 @@ function Mentor() {
         return null
       })
       .filter(senior => senior !== null)
-  }, [searchQuery])
+  }, [searchQuery, users])
 
   // 선배 클릭 시 수업 목록 토글
   const handleSeniorClick = (seniorId) => {
@@ -175,36 +66,19 @@ function Mentor() {
     })
   }
 
+  const majorString = (majorId) => {
+      console.log(majorId)
+      return majors.find((major) => {console.log(major); return major.code === majorId})?.name
+  }
+
   // 채팅 시작
-  const handleStartChat = (e, seniorId, professorId, subject, professorName) => {
+  const handleStartChat = async (e, seniorId) => {
     e.stopPropagation() // 선배 클릭 이벤트 전파 방지
-    
-    // 현재 사용자 ID (실제로는 인증 시스템에서 가져올 것)
-    const currentUserId = 'currentUser'
-    
-    // 채팅 목록에 추가
-    const existingChats = JSON.parse(localStorage.getItem('chats') || '[]')
-    const chatKey = `${seniorId}-${professorId}`
-    
-    // 이미 존재하는 채팅인지 확인
-    if (!existingChats.find(chat => chat.key === chatKey)) {
-      const newChat = {
-        key: chatKey,
-        seniorId,
-        professorId,
-        subject,
-        professorName,
-        lastMessage: '',
-        lastTime: '방금',
-        unread: 0,
-        initiatedBy: currentUserId
+
+      const roomResp = await axios.post('/api/chat/rooms', {'otherUserId': seniorId});
+      if(roomResp.data){
+          navigate(`/chat/${roomResp.data.id}`);
       }
-      existingChats.unshift(newChat)
-      localStorage.setItem('chats', JSON.stringify(existingChats))
-    }
-    
-    // 채팅 화면으로 이동
-    navigate(`/chat/${seniorId}?professor=${professorId}&initiatedBy=${currentUserId}&subject=${encodeURIComponent(subject)}&professorName=${encodeURIComponent(professorName)}`)
   }
 
   return (
@@ -238,17 +112,17 @@ function Mentor() {
         ) : (
           <div className="space-y-2.5">
             {filteredSeniors.map((senior) => {
-              const isExpanded = expandedSeniors.has(senior.id)
+              const isExpanded = expandedSeniors.has(senior.user.id)
               
               return (
                 <div 
-                  key={senior.id}
+                  key={senior.user.id}
                   className="bg-white rounded-lg border border-gray-200 overflow-hidden"
                 >
                   {/* 선배 정보 헤더 */}
                   <div 
                     className="p-3 mentor-tile-header transition-all cursor-pointer"
-                    onClick={() => handleSeniorClick(senior.id)}
+                    onClick={() => handleSeniorClick(senior.user.id)}
                   >
                     <div className="flex gap-3 items-start">
                       <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-100 to-blue-100 border border-indigo-200 flex items-center justify-center text-lg flex-shrink-0">
@@ -256,13 +130,13 @@ function Mentor() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 mb-1">
-                          <h3 className="text-sm font-semibold text-gray-900">{senior.name}</h3>
+                          <h3 className="text-sm font-semibold text-gray-900">{senior.user.username}</h3>
                           <svg className="w-3.5 h-3.5 text-indigo-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                           </svg>
                         </div>
                         <p className="text-xs text-gray-600 mb-1.5">
-                          {senior.major} {senior.year}
+                          {majorString(senior.user.majorCode)} {senior.user.year}
                         </p>
                         {!searchQuery && (
                           <div className="text-xs text-gray-500">
@@ -273,7 +147,7 @@ function Mentor() {
                           <div className="space-y-1">
                             {senior.courses.map((course, idx) => (
                               <div key={idx} className="text-xs text-indigo-700">
-                                {course.subject} - {course.professorName} 수강
+                                {course.course.name} - {course.professorName} 수강
                               </div>
                             ))}
                           </div>
@@ -303,14 +177,14 @@ function Mentor() {
                           >
                             <div className="flex-1">
                               <div className="text-sm font-medium text-gray-900">
-                                {course.subject}
+                                {course.course.name}
                               </div>
                               <div className="text-xs text-gray-600 mt-0.5">
                                 {course.professorName} 교수님
                               </div>
                             </div>
                             <button
-                              onClick={(e) => handleStartChat(e, senior.id, course.professorId, course.subject, course.professorName)}
+                              onClick={(e) => handleStartChat(e, senior.user.id, course.id, course.course.name, course.professorName)}
                               className="px-3 py-1.5 bg-indigo-500 text-white text-xs rounded-lg hover:bg-indigo-600 transition-colors flex-shrink-0 ml-2"
                             >
                               채팅하기

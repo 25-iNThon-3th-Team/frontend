@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-const ProfileCard = ({ profile, onSave, onInputChange, onLogout, onLogin }) => {
+const ProfileCard = ({ profile, onSave, onInputChange, onLogout }) => {
   const [isEditing, setIsEditing] = useState(false);
 
   const handleEditToggle = () => {
