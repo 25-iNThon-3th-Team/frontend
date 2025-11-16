@@ -240,7 +240,8 @@ const convertApiTimetableToSchedule = (apiTimetable) => {
     year: apiTimetable.year,
     isActive: apiTimetable.isActive,
     createdAt: apiTimetable.createdAt,
-    updatedAt: apiTimetable.updatedAt
+    updatedAt: apiTimetable.updatedAt,
+    note: apiTimetable.note || ''
   }
 }
 
@@ -620,7 +621,7 @@ const convertApiClassToCourse = (apiClass) => {
 
 function Schedule() {
   const { isLoggedIn } = useAuthStore()
-  const [userInfo, setUserInfo] = useState({ grade: 0, semester: 0 })
+  const [userInfo, setUserInfo] = useState({ grade: 0, semester: 0, major: '' })
   const [availableCourses, setAvailableCourses] = useState(() => mockCourses.map((course) => enrichCourse(course)))
   const [isLoadingCourses, setIsLoadingCourses] = useState(false)
   const [aiSchedules, setAiSchedules] = useState([])
@@ -635,10 +636,11 @@ function Schedule() {
   const [isSavedPanelOpen, setIsSavedPanelOpen] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isSemesterSelectOpen, setIsSemesterSelectOpen] = useState(false)
-  const [selectedSemester, setSelectedSemester] = useState(null) // 선택된 학기 (예: "2025-1", "2025-여름", "2025-2", "2025-겨울")
+  const [selectedSemester, setSelectedSemester] = useState(null) // 선택된 학기 (예: "2025-1", "2025-2")
   const [feedback, setFeedback] = useState(null)
   const [isFeedbackFading, setIsFeedbackFading] = useState(false)
   const menuRef = useRef(null)
+  const [hasSubmittedChat, setHasSubmittedChat] = useState(false)
   const [chatMessages, setChatMessages] = useState(() => [
     {
       id: 'ai-welcome',
@@ -682,19 +684,35 @@ function Schedule() {
 
   const currentSchedule = aiSchedules[currentIndex]
   
-  // 학기별로 필터링된 시간표 목록
+  // 학기 정보를 "2025-1" 형식으로 변환하는 헬퍼 함수
+  const getScheduleSemester = (schedule) => {
+    // year 필드를 우선 사용
+    if (schedule.year) {
+      return schedule.year
+    }
+    // semester 필드가 있으면 변환
+    if (schedule.semester !== undefined) {
+      const year = new Date().getFullYear()
+      return `${year}-${schedule.semester}`
+    }
+    // label에서 학기 정보 추출 시도
+    if (schedule.label) {
+      const match = schedule.label.match(/(\d{4})-(\d+)/)
+      if (match) {
+        return `${match[1]}-${match[2]}`
+      }
+    }
+    return ''
+  }
+  
+  // 시간표 탭용: isActive가 true인 시간표만 필터링하고, 학기별로 추가 필터링
+  const activeSchedules = savedSchedules.filter(schedule => schedule.isActive === true)
   const filteredSavedSchedules = selectedSemester
-    ? savedSchedules.filter(schedule => {
-        // year 필드를 우선 사용, 없으면 semester 필드로 변환
-        let scheduleSemester = schedule.year || ''
-        if (!scheduleSemester && schedule.semester !== undefined) {
-          const year = new Date().getFullYear()
-          scheduleSemester = `${year}-${schedule.semester}`
-        }
-        // 학기 형식이 "2025-1" 같은 형식이면 비교
+    ? activeSchedules.filter(schedule => {
+        const scheduleSemester = getScheduleSemester(schedule)
         return scheduleSemester === selectedSemester || scheduleSemester.includes(selectedSemester)
       })
-    : savedSchedules
+    : activeSchedules
   
   const currentSavedSchedule = filteredSavedSchedules[savedIndex]
   const currentBrowseSchedule = browseSchedules[browseIndex]
@@ -708,18 +726,14 @@ function Schedule() {
 
   useEffect(() => {
     setSavedIndex((prev) => {
+      // 시간표 탭에서는 isActive가 true인 시간표만 필터링
+      const activeSchedules = savedSchedules.filter(s => s.isActive === true)
       const filtered = selectedSemester
-        ? savedSchedules.filter(schedule => {
-            let scheduleSemester = ''
-            if (schedule.semester !== undefined) {
-              const year = new Date().getFullYear()
-              scheduleSemester = `${year}-${schedule.semester}`
-            } else {
-              scheduleSemester = schedule.label || ''
-            }
+        ? activeSchedules.filter(schedule => {
+            const scheduleSemester = getScheduleSemester(schedule)
             return scheduleSemester === selectedSemester || scheduleSemester.includes(selectedSemester)
           })
-        : savedSchedules
+        : activeSchedules
       if (filtered.length === 0) return 0
       const next = Math.min(prev, filtered.length - 1)
       return next < 0 ? 0 : next
@@ -791,31 +805,36 @@ function Schedule() {
           setSavedSchedules(convertedSchedules)
           setIsApiDataLoaded(true)
           
-          const activeSchedule = convertedSchedules.find(s => s.isActive === true)
-          if (activeSchedule && activeSchedule.year) {
-            setSelectedSemester(activeSchedule.year)
-            const filtered = convertedSchedules.filter(schedule => {
-              const scheduleYear = schedule.year || ''
-              return scheduleYear === activeSchedule.year
-            })
-            const activeIndex = filtered.findIndex(s => s.id === activeSchedule.id)
-            if (activeIndex >= 0) {
-              setSavedIndex(activeIndex)
-            }
-          } else if (convertedSchedules.length > 0) {
-            setSavedIndex(0)
-          }
+          // 시간표 탭에서는 기본값으로 2025-2 설정
+          const year = new Date().getFullYear()
+          const defaultSemester = `${year}-2`
+          setSelectedSemester(defaultSemester)
+          
+          // savedIndex는 useEffect에서 자동으로 조정됨
+          setSavedIndex(0)
         } else {
           const localSchedules = loadSavedSchedules()
           if (localSchedules.length > 0) {
             setSavedSchedules(localSchedules)
           }
           setIsApiDataLoaded(false)
+          // 시간표 탭에서는 기본값으로 2025-2 설정
+          const year = new Date().getFullYear()
+          const defaultSemester = `${year}-2`
+          if (!selectedSemester) {
+            setSelectedSemester(defaultSemester)
+          }
         }
       } catch (error) {
         const localSchedules = loadSavedSchedules()
         if (localSchedules.length > 0) {
           setSavedSchedules(localSchedules)
+        }
+        // 시간표 탭에서는 기본값으로 2025-2 설정
+        const year = new Date().getFullYear()
+        const defaultSemester = `${year}-2`
+        if (!selectedSemester) {
+          setSelectedSemester(defaultSemester)
         }
       } finally {
         setIsLoadingApi(false)
@@ -834,7 +853,8 @@ function Schedule() {
         const userData = await userApi.getMyInfo()
         setUserInfo({
           grade: userData.grade || 0,
-          semester: userData.semester || 0
+          semester: userData.semester || 0,
+          major: userData.majorName || userData.majorCode || ''
         })
       } catch (error) {
         // 기본값 유지
@@ -947,12 +967,9 @@ function Schedule() {
     setCurrentIndex(0)
     setLastGeneratedAt(new Date().toISOString())
     setIsGenerating(false)
-    setFeedback({ type: 'success', text: '10개의 추천 시간표가 준비됐어요!' })
   }, [buildAiSchedules])
 
-  useEffect(() => {
-    generateWithAi()
-  }, [generateWithAi])
+  // 초기 자동 생성 제거 - 전송 버튼을 누르고 API 호출 후에만 시간표 생성
 
   // 둘러보기용 친구들의 시간표 생성
   useEffect(() => {
@@ -1457,6 +1474,7 @@ function Schedule() {
     setChatMessages((prev) => [...prev, userMessage])
     setChatInput('')
     setIsChatting(true)
+    setHasSubmittedChat(true)
     
     // API 호출 (로그인 상태인 경우)
     let aiReply = '요청 내용을 바탕으로 시간표 10개를 만들었어요. 추가 요구사항이 있으면 알려주세요. 더 정교한 시간표를 추천드릴게요.'
@@ -1477,7 +1495,7 @@ function Schedule() {
               ...converted,
               label: `추천 ${index + 1}`,
               theme: AI_THEMES[index % AI_THEMES.length],
-              summary: describeTheme(AI_THEMES[index % AI_THEMES.length].id)
+              summary: converted.note || describeTheme(AI_THEMES[index % AI_THEMES.length].id)
             }
           })
           
@@ -1514,7 +1532,10 @@ function Schedule() {
   }
 
   const isEmpty = aiSchedules.length === 0
-  const savedEmpty = savedSchedules.length === 0
+  // 시간표 탭에서는 isActive가 true인 시간표가 없으면 empty로 표시
+  const savedEmpty = activeTab === '시간표' 
+    ? activeSchedules.length === 0
+    : savedSchedules.length === 0
   const isEditingSaved = Boolean(currentSavedSchedule && editingScheduleId === currentSavedSchedule?.id)
   const savedAddableCourses =
     isEditingSaved && currentSavedSchedule ? getAddableCourses(currentSavedSchedule) : []
@@ -1608,39 +1629,17 @@ function Schedule() {
           className={`schedule-nav-item ${activeTab === '시간표' ? 'active' : ''}`}
           onClick={() => {
             setActiveTab('시간표')
-            // isActive가 true인 시간표 찾기
-            const activeScheduleIndex = savedSchedules.findIndex(s => s.isActive === true)
-            if (activeScheduleIndex >= 0) {
-              // 해당 시간표의 학기 찾기
-              const activeSchedule = savedSchedules[activeScheduleIndex]
-              let scheduleSemester = ''
-              if (activeSchedule.semester !== undefined) {
-                const year = new Date().getFullYear()
-                scheduleSemester = `${year}-${activeSchedule.semester}`
-              } else if (activeSchedule.year) {
-                scheduleSemester = activeSchedule.year
-              }
-              if (scheduleSemester) {
-                setSelectedSemester(scheduleSemester)
-              }
-              // 필터링된 목록에서 해당 시간표의 인덱스 찾기
-              const filtered = scheduleSemester
-                ? savedSchedules.filter(schedule => {
-                    let sSemester = ''
-                    if (schedule.semester !== undefined) {
-                      const year = new Date().getFullYear()
-                      sSemester = `${year}-${schedule.semester}`
-                    } else if (schedule.year) {
-                      sSemester = schedule.year
-                    }
-                    return sSemester === scheduleSemester || sSemester.includes(scheduleSemester)
-                  })
-                : savedSchedules
-              const filteredIndex = filtered.findIndex(s => s.id === activeSchedule.id)
-              if (filteredIndex >= 0) {
-                setSavedIndex(filteredIndex)
-              }
+            // 시간표 탭에서는 기본값으로 2025-2 설정
+            const year = new Date().getFullYear()
+            const defaultSemester = `${year}-2`
+            
+            // selectedSemester가 없으면 기본값 설정
+            if (!selectedSemester) {
+              setSelectedSemester(defaultSemester)
             }
+            
+            // savedIndex는 useEffect에서 자동으로 조정됨
+            setSavedIndex(0)
           }}
         >
           시간표
@@ -1680,121 +1679,6 @@ function Schedule() {
                         <p className="saved-card-title">{getSemesterLabel(selectedSemester)}</p>
                       </div>
                     </div>
-                    <div className="saved-card-actions">
-                      <div className="menu-container" ref={menuRef}>
-                        <button 
-                          className="menu-button" 
-                          onClick={() => setIsMenuOpen(!isMenuOpen)}
-                        >
-                          <span className="menu-dots">⋮</span>
-                        </button>
-                        {isMenuOpen && (
-                          <div className="menu-dropdown">
-                            <button 
-                              className="menu-item"
-                              onClick={() => {
-                                setIsMenuOpen(false)
-                                setIsSemesterSelectOpen(true)
-                              }}
-                            >
-                              학기 선택
-                            </button>
-                            <button 
-                              className="menu-item"
-                              onClick={() => {
-                                setIsMenuOpen(false)
-                                // 빈 시간표가 있으면 수정 모드로, 없으면 새로 생성
-                                if (filteredSavedSchedules.length > 0) {
-                                  toggleEditSchedule(filteredSavedSchedules[0].id)
-                                } else {
-                                  // 빈 시간표 생성
-                                  const newScheduleName = getSemesterLabel(selectedSemester)
-                                  let newScheduleId = `new-${Date.now()}`
-                                  
-                                  if (isLoggedIn) {
-                                    // API 호출은 async이므로 여기서는 로컬만 생성
-                                    let semesterNum = 1
-                                    if (selectedSemester === '2025-여름') {
-                                      semesterNum = 3
-                                    } else if (selectedSemester === '2025-겨울') {
-                                      semesterNum = 4
-                                    } else {
-                                      const semesterMatch = selectedSemester.match(/(\d+)-(\d+)/)
-                                      semesterNum = semesterMatch ? parseInt(semesterMatch[2]) : 1
-                                    }
-                                    
-                                    const newSchedule = {
-                                      id: newScheduleId,
-                                      name: newScheduleName,
-                                      label: newScheduleName,
-                                      courses: [],
-                                      totalCredits: 0,
-                                      requiredCount: 0,
-                                      electiveCount: 0,
-                                      signature: '',
-                                      grade: 0,
-                                      semester: semesterNum,
-                                      isActive: true,
-                                      savedAt: new Date().toISOString()
-                                    }
-                                    
-                                    setSavedSchedules((prev) => [newSchedule, ...prev])
-                                    setSavedIndex(0)
-                                    toggleEditSchedule(newScheduleId)
-                                    
-                                    // API 호출은 백그라운드에서
-                                    // semester를 "2025-1", "2025-여름" 형식으로 변환
-                                    let yearSemester = '2025-1'
-                                    if (semesterNum === 1) yearSemester = '2025-1'
-                                    else if (semesterNum === 2) yearSemester = '2025-2'
-                                    else if (semesterNum === 3) yearSemester = '2025-여름'
-                                    else if (semesterNum === 4) yearSemester = '2025-겨울'
-                                    
-                                    scheduleApi.createTimetable({
-                                      name: newScheduleName,
-                                      grade: 0,
-                                      year: yearSemester,
-                                      isActive: true,
-                                      classIds: [],
-                                      semester: semesterNum
-                                    }).then(response => {
-                                      if (response?.id) {
-                                        setSavedSchedules((prev) =>
-                                          prev.map(s => s.id === newScheduleId ? { ...s, id: response.id } : s)
-                                        )
-                                      }
-                                    }).catch(() => {
-                                      // API 실패 시에도 로컬에서 생성 (사용자 경험을 위해)
-                                    })
-                                  } else {
-                                    const newSchedule = {
-                                      id: newScheduleId,
-                                      name: newScheduleName,
-                                      label: newScheduleName,
-                                      courses: [],
-                                      totalCredits: 0,
-                                      requiredCount: 0,
-                                      electiveCount: 0,
-                                      signature: '',
-                                      grade: 0,
-                                      semester: semesterNum,
-                                      isActive: true,
-                                      savedAt: new Date().toISOString()
-                                    }
-                                    
-                                    setSavedSchedules((prev) => [newSchedule, ...prev])
-                                    setSavedIndex(0)
-                                    toggleEditSchedule(newScheduleId)
-                                  }
-                                }
-                              }}
-                            >
-                              시간표 수정하기
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
                   </div>
                 </div>
                 <p className="page-text">{getSemesterLabel(selectedSemester)} 학기의 시간표가 없어요.</p>
@@ -1813,14 +1697,8 @@ function Schedule() {
                       const newScheduleName = getSemesterLabel(selectedSemester)
                       let newScheduleId = `new-${Date.now()}`
                       let semesterNum = 1
-                      if (selectedSemester === '2025-여름') {
-                        semesterNum = 3
-                      } else if (selectedSemester === '2025-겨울') {
-                        semesterNum = 4
-                      } else {
-                        const semesterMatch = selectedSemester.match(/(\d+)-(\d+)/)
-                        semesterNum = semesterMatch ? parseInt(semesterMatch[2]) : 1
-                      }
+                      const semesterMatch = selectedSemester?.match(/(\d+)-(\d+)/)
+                      semesterNum = semesterMatch ? parseInt(semesterMatch[2]) : 1
                       
                       // 로컬 상태에 새 시간표 추가
                       const newSchedule = {
@@ -1864,12 +1742,10 @@ function Schedule() {
                       // API 호출 (로그인 상태인 경우)
                       if (isLoggedIn) {
                         try {
-                          // semester를 "2025-1", "2025-여름" 형식으로 변환
+                          // semester를 "2025-1", "2025-2" 형식으로 변환
                           let yearSemester = '2025-1'
                           if (semesterNum === 1) yearSemester = '2025-1'
                           else if (semesterNum === 2) yearSemester = '2025-2'
-                          else if (semesterNum === 3) yearSemester = '2025-여름'
-                          else if (semesterNum === 4) yearSemester = '2025-겨울'
                           
                           const apiPayload = {
                             name: newScheduleName,
@@ -2153,7 +2029,7 @@ function Schedule() {
                   </div>
                   <div className="edit-bottom-sheet-content">
                     <div className="semester-select-list">
-                      {['2025-1', '2025-여름', '2025-2', '2025-겨울'].map((semester) => (
+                      {['2025-1', '2025-2'].map((semester) => (
                         <button
                           key={semester}
                           className={`semester-select-item ${selectedSemester === semester ? 'active' : ''}`}
@@ -2205,7 +2081,7 @@ function Schedule() {
           </form>
         </section>
 
-        {!isEmpty && aiSchedules.length > 0 ? (
+        {hasSubmittedChat && !isEmpty && aiSchedules.length > 0 ? (
           <div className="schedule-display browse-carousel-container">
             <button
               type="button"
@@ -2240,13 +2116,6 @@ function Schedule() {
                       <span className="schedule-index">
                         {aiSchedules.indexOf(schedule) + 1} / {aiSchedules.length}
                       </span>
-                    </div>
-
-                    <div className="schedule-theme-description">
-                      <span className="schedule-theme-label" style={{ color: schedule.theme.accent }}>
-                        {schedule.theme.label}
-                      </span>
-                      <span className="schedule-theme-text">{schedule.summary}</span>
                     </div>
 
                     <div className="schedule-meta compact">
@@ -2313,7 +2182,11 @@ function Schedule() {
           </div>
         ) : (
           <div className="page-card empty-state">
-            <p className="page-text">시간표를 불러오는 중이에요. 잠시만 기다려 주세요.</p>
+            <p className="page-text">
+              {hasSubmittedChat 
+                ? '시간표를 불러오는 중이에요. 잠시만 기다려 주세요.' 
+                : '원하는 조건을 전송해주세요!'}
+            </p>
           </div>
         )}
 
@@ -2639,7 +2512,9 @@ function Schedule() {
               browseSchedules.length > 0 && (
                 <>
                   <div className="browse-header">
-                    <h2 className="browse-header-title">컴퓨터학과 24학번</h2>
+                    <h2 className="browse-header-title">
+                      {userInfo.major || '학과'} {userInfo.grade || 0}학년 {userInfo.semester || 0}학기
+                    </h2>
                     <p className="browse-header-count">총 시간표 {browseSchedules.length}개</p>
                   </div>
                   <div className="schedule-display browse-carousel-container">

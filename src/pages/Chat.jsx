@@ -3,6 +3,16 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import '../App.css'
 import axios from '../api/axios.js'
 
+// 사용자 프로필 SVG 이모지
+const UserAvatar = ({ className = "w-8 h-8" }) => {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="8" r="4" fill="currentColor"/>
+      <path d="M6 21C6 17 8.5 14 12 14C15.5 14 18 17 18 21" fill="currentColor"/>
+    </svg>
+  );
+};
+
 function Chat() {
   const { roomId } = useParams()
   const [searchParams] = useSearchParams()
@@ -114,7 +124,9 @@ function Chat() {
         <button className="chat-back-button" onClick={() => navigate('/chatlist')}>
           ←
         </button>
-        <div className="chat-header-avatar">{}</div>
+        <div className="chat-header-avatar">
+          <UserAvatar className="w-10 h-10 text-indigo-600 dark:text-indigo-400" />
+        </div>
         <div className="chat-header-info">
           <div className="chat-header-name-wrapper">
             <h2 className="chat-header-name">{opponent.username}</h2>
@@ -143,7 +155,7 @@ function Chat() {
           chat.map((msg) => (
             <div key={msg.id} className={`chat-message ${msg?.senderId?.toString() === user?.id ? 'sent' : ''}`}>
               <div className="chat-message-avatar">
-                {'👤'}
+                <UserAvatar className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
               </div>
               <div className="chat-message-content">
                 <p className="chat-message-text">{msg.content}</p>

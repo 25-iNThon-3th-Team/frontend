@@ -37,6 +37,8 @@ export interface ApiSchedule {
 export interface ApiUser {
   grade: number
   semester: number
+  majorCode?: string
+  majorName?: string
 }
 
 export interface CreateTimetablePayload {

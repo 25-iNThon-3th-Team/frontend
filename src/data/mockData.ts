@@ -1466,8 +1466,8 @@ export const mockTracks: Track[] = [
     trackId: 'ai',
     name: 'AI/ML',
     description: '인공지능 및 머신러닝 전문가 양성',
-    requiredCourses: ['CS201', 'AI301', 'AI302'],
-    optionalCourses: ['DS302'],
+    requiredCourses: ['COSE214', 'COSE361', 'COSE362', 'COSE474'],
+    optionalCourses: ['COSE475', 'COSE382', 'COSE371'],
     fitScore: 85,
     workFocus: '머신러닝 모델을 설계·학습시키고 데이터 파이프라인을 통해 예측·분류 문제를 해결합니다.',
     aptitudeTraits: ['수학/통계에 강함', '새로운 연구 트렌드 학습을 즐김', '실험과 튜닝에 인내심이 있음', '데이터 기반 의사결정을 선호']
@@ -1476,8 +1476,8 @@ export const mockTracks: Track[] = [
     trackId: 'data',
     name: 'Data Science',
     description: '데이터 과학 및 분석 전문가',
-    requiredCourses: ['DS301', 'DS302', 'AI301'],
-    optionalCourses: ['AI302'],
+    requiredCourses: ['COSE371', 'COSE372', 'COSE361', 'COSE362'],
+    optionalCourses: ['COSE474', 'COSE382', 'COSE436'],
     fitScore: 75,
     workFocus: '대규모 데이터를 수집·정제·시각화하고 분석 모델로 비즈니스 인사이트를 만들어냅니다.',
     aptitudeTraits: ['문제 정의에 능숙', '데이터 해석과 스토리텔링을 좋아함', '도메인 지식 학습을 즐김', '커뮤니케이션이 원활']
@@ -1486,8 +1486,8 @@ export const mockTracks: Track[] = [
     trackId: 'backend',
     name: 'Backend',
     description: '백엔드 개발 전문가',
-    requiredCourses: ['BE301', 'BE302', 'DS301'],
-    optionalCourses: ['CS201'],
+    requiredCourses: ['COSE352', 'COSE341', 'COSE342', 'COSE371'],
+    optionalCourses: ['COSE214', 'COSE444', 'COSE457'],
     fitScore: 70,
     workFocus: '서비스 로직과 API를 설계하고 데이터베이스·인프라를 구성해 안정적인 시스템을 만듭니다.',
     aptitudeTraits: ['논리적 설계 능력', '디버깅과 최적화를 즐김', '안정성/확장성에 관심', '팀과의 협업을 선호']
@@ -1496,8 +1496,8 @@ export const mockTracks: Track[] = [
     trackId: 'security',
     name: 'Security',
     description: '정보보안 전문가',
-    requiredCourses: ['CS201', 'BE301'],
-    optionalCourses: [],
+    requiredCourses: ['COSE214', 'COSE354', 'COSE342'],
+    optionalCourses: ['COSE484', 'COSE322'],
     fitScore: 60,
     workFocus: '시스템과 네트워크의 취약점을 진단하고 보안 정책·대응 체계를 설계합니다.',
     aptitudeTraits: ['위험 감지에 민감', '세밀한 분석을 즐김', '윤리 의식이 확고', '모의침투 등 탐구심이 강함']
@@ -1602,6 +1602,111 @@ export const mockCrossMajors: CrossMajorOption[] = [
     ],
     comboExamples: ['프로토타입 구현 + UX 리서치', '콘텐츠 기획 + 인터랙션 디자인'],
     trackMatches: ['backend', 'data']
+  },
+  {
+    id: 'security-major',
+    rank: 1,
+    emoji: '🔒',
+    title: '법학 · 경찰행정학',
+    majors: ['법학', '경찰행정학', '행정학'],
+    keywords: ['사이버보안법', '디지털 포렌식', '정보보호 정책'],
+    reason:
+      '정보대에서 보안 기술을 배우고 법학/경찰행정에서 법률·정책·수사 기법을 익히면 사이버보안 전문가, 디지털 포렌식 전문가, 정보보호 정책 수립자로 활동할 수 있습니다.',
+    schedulePatterns: [
+      {
+        phase: '1~2학년',
+        details: [
+          '정보대: 자료구조, 알고리즘, 컴퓨터구조, 네트워크 등 전필 위주로 기초 다지기',
+          '법학/경찰: 헌법, 형법, 행정법 기초, 정보보호법 등 입문 과목으로 법률 기초 쌓기'
+        ]
+      },
+      {
+        phase: '2~3학년',
+        details: [
+          '정보대: 정보보호, 시스템프로그래밍, 네트워크 보안 등 보안 심화 과목 이수',
+          '법학/경찰: 사이버범죄법, 디지털 증거법, 정보보호 정책 등 전문 과목 병행'
+        ]
+      },
+      {
+        phase: '3~4학년',
+        details: [
+          '보안 사고 분석·포렌식 프로젝트를 법률·정책 관점에서 접근하는 실전 프로젝트 진행',
+          '사이버보안 컨설팅, 포렌식 전문가, 정보보호 정책 수립자 포지션으로 취업 가능'
+        ]
+      }
+    ],
+    comboExamples: ['보안 기술 + 사이버범죄법', '디지털 포렌식 + 증거법'],
+    trackMatches: ['security']
+  },
+  {
+    id: 'ai-math',
+    rank: 2,
+    emoji: '📐',
+    title: '수학 · 통계학',
+    majors: ['수학', '통계학', '응용수학'],
+    keywords: ['수학적 모델링', '알고리즘 이론', '최적화 이론'],
+    reason:
+      '정보대에서 AI/ML 실무를 배우고 수학/통계에서 이론적 기반을 다지면 연구직 AI 엔지니어, 알고리즘 연구원, 수학적 모델링 전문가로 성장할 수 있습니다.',
+    schedulePatterns: [
+      {
+        phase: '1~2학년',
+        details: [
+          '수학/통계: 미적분, 선형대수, 확률론, 통계학 등 수학 기초 과목 선이수',
+          '정보대: 프로그래밍, 자료구조, 알고리즘, 이산수학 등 전필 위주로 기초 다지기'
+        ]
+      },
+      {
+        phase: '2~3학년',
+        details: [
+          '수학/통계: 수치해석, 최적화 이론, 확률과정, 통계적 추론 등 심화 과목 이수',
+          '정보대: 인공지능, 기계학습, 딥러닝, 확률및랜덤과정 등 AI/ML 실무 과목 병행'
+        ]
+      },
+      {
+        phase: '3~4학년',
+        details: [
+          '수학적 모델링과 AI 알고리즘을 결합한 연구 프로젝트 또는 논문 작성',
+          '연구소, 대학원 진학, 알고리즘 연구원 포지션으로 진로 확장 가능'
+        ]
+      }
+    ],
+    comboExamples: ['딥러닝 + 최적화 이론', '확률 모델 + 머신러닝'],
+    trackMatches: ['ai']
+  },
+  {
+    id: 'backend-infra',
+    rank: 2,
+    emoji: '⚙️',
+    title: '전기전자공학 · 산업공학',
+    majors: ['전기전자공학', '산업공학', '시스템공학'],
+    keywords: ['인프라 설계', '시스템 최적화', '하드웨어 이해'],
+    reason:
+      '정보대에서 백엔드 개발을 배우고 전기전자/산업공학에서 하드웨어·시스템 설계를 익히면 임베디드 시스템, IoT, 인프라 설계 전문가로 활동할 수 있습니다.',
+    schedulePatterns: [
+      {
+        phase: '1~2학년',
+        details: [
+          '전기전자/산공: 회로이론, 전자기학, 공학수학 등 기초 과목 선이수',
+          '정보대: 자료구조, 알고리즘, 컴퓨터구조, 운영체제 등 전필 위주로 기초 다지기'
+        ]
+      },
+      {
+        phase: '2~3학년',
+        details: [
+          '전기전자/산공: 마이크로프로세서, 제어시스템, 시스템 설계 등 심화 과목 이수',
+          '정보대: 시스템프로그래밍, 네트워크, 클라우드컴퓨팅 등 백엔드 심화 과목 병행'
+        ]
+      },
+      {
+        phase: '3~4학년',
+        details: [
+          '임베디드 시스템, IoT 프로젝트, 인프라 설계 프로젝트 등 실전 프로젝트 진행',
+          '임베디드 개발자, IoT 전문가, 인프라 설계자 포지션으로 취업 가능'
+        ]
+      }
+    ],
+    comboExamples: ['백엔드 + 임베디드 시스템', '클라우드 + 하드웨어 제어'],
+    trackMatches: ['backend']
   }
 ];
 

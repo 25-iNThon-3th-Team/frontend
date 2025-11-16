@@ -3,6 +3,16 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import '../App.css'
 import axios from "../api/axios.js";
 
+// 사용자 프로필 SVG 이모지
+const UserAvatar = ({ className = "w-10 h-10" }) => {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="8" r="4" fill="currentColor"/>
+      <path d="M6 21C6 17 8.5 14 12 14C15.5 14 18 17 18 21" fill="currentColor"/>
+    </svg>
+  );
+};
+
 function ChatList() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -10,7 +20,10 @@ function ChatList() {
   const [searchQuery, setSearchQuery] = useState('')
   const [roleFilter, setRoleFilter] = useState('전체') // '전체', '선배', '후배'
   const [rooms, setRooms] = useState([])
-    const [user, setUser] = useState(null)
+  const [user, setUser] = useState(null)
+  const [chatToDelete, setChatToDelete] = useState(null)
+  const [isDeletingChat, setIsDeletingChat] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
   // 현재 사용자 ID (실제로는 인증 시스템에서 가져올 것)
   const currentUserId = 'currentUser'
   
@@ -87,12 +100,42 @@ function ChatList() {
     }
   }
 
-  const handleDeleteChat = (e, chatKey) => {
-    e.stopPropagation() // 채팅 클릭 이벤트 전파 방지
-    
-    if (window.confirm('이 채팅방을 삭제하시겠습니까?')) {
-      const updatedChats = chats.filter(chat => chat.key !== chatKey)
-      setChats(updatedChats)
+  const handleDeleteChat = (e, chat) => {
+    e.stopPropagation()
+    setDeleteError('')
+    setChatToDelete(chat)
+  }
+
+  const resetDeleteDialog = () => {
+    setChatToDelete(null)
+    setDeleteError('')
+  }
+
+  const handleCancelDelete = () => {
+    if (isDeletingChat) return
+    resetDeleteDialog()
+  }
+
+  const getChatPartnerName = (chat) => {
+    if (!chat || !user) return ''
+    return chat.sender.id.toString() === user.id ? chat.receiver.username : chat.sender.username
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!chatToDelete) return
+
+    setIsDeletingChat(true)
+    setDeleteError('')
+
+    try {
+      await axios.delete(`/api/chat/rooms/${chatToDelete.id}`)
+      setRooms(prevRooms => prevRooms.filter(room => room.id !== chatToDelete.id))
+      resetDeleteDialog()
+    } catch (error) {
+      console.error('채팅방 삭제 실패:', error)
+      setDeleteError('채팅방 삭제에 실패했습니다. 잠시 후 다시 시도해주세요.')
+    } finally {
+      setIsDeletingChat(false)
     }
   }
 
@@ -190,7 +233,9 @@ function ChatList() {
                   className="chat-item"
                   onClick={() => handleChatClick(chat.id)}
                 >
-                  <div className="chat-item-avatar">{senior.profileImage}</div>
+                  <div className="chat-item-avatar">
+                    <UserAvatar className="w-10 h-10 text-indigo-600 dark:text-indigo-400" />
+                  </div>
                   <div className="chat-item-content">
                     <div className="chat-item-header">
                       <div className="chat-item-name-wrapper">
@@ -216,7 +261,7 @@ function ChatList() {
                       <div className="flex items-center gap-2">
                         <span className="chat-item-time">{new Date(chat.lastMessageAt).toLocaleDateString()}</span>
                         <button
-                          onClick={(e) => handleDeleteChat(e, chat.key)}
+                          onClick={(e) => handleDeleteChat(e, chat)}
                           className="text-gray-400 hover:text-red-500 transition-colors p-1"
                           title="삭제"
                         >
@@ -234,6 +279,38 @@ function ChatList() {
           </div>
         )}
       </div>
+
+      {chatToDelete && (
+        <div className="dialog-overlay" onClick={handleCancelDelete}>
+          <div className="confirm-dialog" onClick={(e) => e.stopPropagation()}>
+            <h3 className="confirm-dialog-title">채팅방을 삭제할까요?</h3>
+            <p className="confirm-dialog-description">
+              {getChatPartnerName(chatToDelete)
+                ? `${getChatPartnerName(chatToDelete)} 님과의 대화 내용이 모두 삭제되고 복구할 수 없어요.`
+                : '채팅방을 삭제하면 대화 내용이 모두 삭제되고 복구할 수 없어요.'}
+            </p>
+            {deleteError && <p className="confirm-dialog-error">{deleteError}</p>}
+            <div className="confirm-dialog-actions">
+              <button
+                type="button"
+                className="ghost-btn small"
+                onClick={handleCancelDelete}
+                disabled={isDeletingChat}
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                className="primary-btn compact danger"
+                onClick={handleConfirmDelete}
+                disabled={isDeletingChat}
+              >
+                {isDeletingChat ? '삭제 중...' : '삭제하기'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

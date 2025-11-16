@@ -95,7 +95,7 @@ function Terms() {
             </ul>
 
             <p className="text-xs text-gray-500 mt-6">
-              최종 수정일: 2024년 1월 1일
+              최종 수정일: 2025년 11월 16일
             </p>
           </div>
         </div>

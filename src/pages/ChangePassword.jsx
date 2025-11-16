@@ -189,7 +189,7 @@ function ChangePassword() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full px-4 py-2 bg-gradient-to-r from-indigo-600 to-blue-600 text-white text-base rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full px-4 py-2 bg-[#4f46e5] hover:bg-[#6366f1] text-white text-base rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
             {isLoading ? "변경 중..." : "비밀번호 변경"}
           </button>

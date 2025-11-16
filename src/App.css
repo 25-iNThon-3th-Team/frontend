@@ -705,12 +705,12 @@
   width: 50px;
   height: 50px;
   border-radius: 50%;
-  background: #f7fafc;
+  background: #e2e8f0;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.8rem;
-  border: 2px solid #e2e8f0;
+  border: 2px solid #cbd5e0;
   flex-shrink: 0;
 }
 
@@ -1127,6 +1127,16 @@
 .primary-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.primary-btn.danger {
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
+.primary-btn.danger:hover:not(:disabled) {
+  background: #b91c1c;
+  border-color: #b91c1c;
 }
 
 .ghost-btn {
@@ -2387,6 +2397,59 @@
   font-size: 0.85rem;
 }
 
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2100;
+  padding: 20px;
+}
+
+.confirm-dialog {
+  background: #ffffff;
+  border-radius: 20px;
+  width: min(360px, calc(100% - 40px));
+  padding: 28px 24px;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.3);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.confirm-dialog-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.confirm-dialog-description {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #4b5563;
+  line-height: 1.5;
+}
+
+.confirm-dialog-error {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #dc2626;
+}
+
+.confirm-dialog-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.confirm-dialog-actions .ghost-btn,
+.confirm-dialog-actions .primary-btn {
+  flex: 1;
+}
+
 /* Schedule List (제작 탭) */
 .schedule-list {
   display: flex;
@@ -3169,6 +3232,11 @@
   border-color: var(--border-color);
 }
 
+.dark .chat-item-avatar {
+  background-color: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+
 .dark .chat-message-content {
   background-color: var(--bg-secondary);
   color: var(--text-primary);
@@ -3267,6 +3335,64 @@
 
 .dark .schedule-chip strong {
   color: var(--text-primary);
+}
+
+.dark .confirm-dialog {
+  background-color: var(--bg-secondary);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+}
+
+.dark .confirm-dialog-title {
+  color: var(--text-primary);
+}
+
+.dark .confirm-dialog-description {
+  color: var(--text-secondary);
+}
+
+.dark .confirm-dialog-error {
+  color: #fca5a5;
+}
+
+.dark .browse-carousel-container {
+  background-color: var(--bg-primary);
+}
+
+.dark .browse-carousel-container .schedule-card,
+.dark .browse-carousel-container .saved-card {
+  background-color: var(--bg-secondary);
+  border-color: var(--border-color);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
+}
+
+.dark .browse-nav-button {
+  background-color: var(--bg-tertiary);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+.dark .browse-nav-button:hover:not(:disabled) {
+  background-color: var(--bg-secondary);
+  border-color: #818cf8;
+  box-shadow: 0 4px 12px rgba(129, 140, 248, 0.35);
+}
+
+.dark .browse-nav-button:disabled {
+  color: var(--text-tertiary);
+  border-color: var(--border-color);
+  background-color: var(--bg-tertiary);
+  box-shadow: none;
+}
+
+.dark .page-card {
+  background-color: var(--bg-secondary);
+  border-color: var(--border-color);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.dark .page-text {
+  color: var(--text-secondary);
 }
 
 .dark .course-item {

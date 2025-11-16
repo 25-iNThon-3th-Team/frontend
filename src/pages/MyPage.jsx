@@ -30,6 +30,42 @@ function MyPage() {
     maxTransferMinutes: 15,
     priorityOrder: ["전공필수", "전공선택", "교양"],
   });
+  const [dialog, setDialog] = useState(null);
+  const [isDialogProcessing, setIsDialogProcessing] = useState(false);
+
+  const openAlertDialog = (title, message, variant = "info") => {
+    setDialog({
+      mode: "alert",
+      title,
+      message,
+      variant,
+      confirmLabel: "확인",
+    });
+  };
+
+  const openConfirmDialog = ({
+    title,
+    message,
+    variant = "warning",
+    confirmLabel = "확인",
+    cancelLabel = "취소",
+    onConfirm,
+  }) => {
+    setDialog({
+      mode: "confirm",
+      title,
+      message,
+      variant,
+      confirmLabel,
+      cancelLabel,
+      onConfirm,
+    });
+  };
+
+  const closeDialog = () => {
+    setDialog(null);
+    setIsDialogProcessing(false);
+  };
 
   const handleSave = async () => {
     try {
@@ -47,10 +83,14 @@ function MyPage() {
         priorityOrder: coursePreference.priorityOrder || [],
       });
       console.log("프로필 저장 성공:", response.data);
-      alert("프로필이 저장되었습니다!");
+      openAlertDialog("프로필 저장 완료", "프로필이 저장되었습니다!", "success");
     } catch (error) {
       console.error("프로필 저장 에러:", error);
-      alert("프로필 저장에 실패했습니다.");
+      openAlertDialog(
+        "프로필 저장 실패",
+        "프로필 저장에 실패했습니다. 잠시 후 다시 시도해주세요.",
+        "danger"
+      );
     }
   };
 
@@ -58,21 +98,29 @@ function MyPage() {
     setProfile({ ...profile, [field]: value });
   };
 
-  const handleLogout = async () => {
-    if (window.confirm("로그아웃 하시겠습니까?")) {
-      try {
-        await axios.post("/logout");
-        console.log("로그아웃 성공");
-      } catch (error) {
-        console.error("로그아웃 에러:", error);
-      } finally {
-        const { logout } = useAuthStore.getState();
-        logout();
-        sessionStorage.clear();
-        navigate("/");
-        alert("로그아웃되었습니다.");
-      }
+  const performLogout = async () => {
+    try {
+      await axios.post("/logout");
+      console.log("로그아웃 성공");
+    } catch (error) {
+      console.error("로그아웃 에러:", error);
+    } finally {
+      const { logout } = useAuthStore.getState();
+      logout();
+      sessionStorage.clear();
+      navigate("/");
     }
+  };
+
+  const handleLogout = () => {
+    openConfirmDialog({
+      title: "로그아웃할까요?",
+      message: "로그아웃하면 다시 로그인해야 해요.",
+      variant: "warning",
+      confirmLabel: "로그아웃",
+      cancelLabel: "취소",
+      onConfirm: performLogout,
+    });
   };
 
   const handlePreferenceSave = async () => {
@@ -93,29 +141,35 @@ function MyPage() {
       });
 
       console.log("수강신청 성향 저장 성공:", response.data);
-      alert("수강신청 성향이 저장되었습니다!");
+      openAlertDialog(
+        "저장 완료",
+        "수강신청 성향이 저장되었습니다!",
+        "success"
+      );
     } catch (error) {
       console.error("수강신청 성향 저장 에러:", error);
       console.error("에러 응답:", error.response);
 
+      let message = "수강신청 성향 저장에 실패했습니다.";
+
       if (!error.response) {
-        alert("서버에 연결할 수 없습니다. 네트워크 연결을 확인해주세요.");
+        message = "서버에 연결할 수 없습니다. 네트워크 연결을 확인해주세요.";
       } else if (error.response.status === 400) {
-        const message =
+        const detail =
           error.response.data?.message || "입력한 정보를 확인해주세요.";
-        alert(`저장 실패: ${message}`);
+        message = `저장 실패: ${detail}`;
       } else if (
         error.response.status === 401 ||
         error.response.status === 403
       ) {
-        alert("인증이 만료되었습니다. 다시 로그인해주세요.");
+        message = "인증이 만료되었습니다. 다시 로그인해주세요.";
       } else if (error.response.status >= 500) {
-        alert("서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+        message = "서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
       } else {
-        alert(
-          `저장 중 오류가 발생했습니다. (오류 코드: ${error.response.status})`
-        );
+        message = `저장 중 오류가 발생했습니다. (오류 코드: ${error.response.status})`;
       }
+
+      openAlertDialog("저장 실패", message, "danger");
     }
   };
 
@@ -202,6 +256,61 @@ function MyPage() {
         />
         <SettingsMenu />
       </div>
+
+      {dialog && (
+        <div className="dialog-overlay" onClick={() => !isDialogProcessing && closeDialog()}>
+          <div
+            className="confirm-dialog"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="confirm-dialog-title">{dialog.title}</h3>
+            <p className="confirm-dialog-description">{dialog.message}</p>
+            <div className="confirm-dialog-actions">
+              {dialog.mode === "confirm" && (
+                <button
+                  type="button"
+                  className="ghost-btn small"
+                  onClick={closeDialog}
+                  disabled={isDialogProcessing}
+                >
+                  {dialog.cancelLabel || "취소"}
+                </button>
+              )}
+              <button
+                type="button"
+                className={`primary-btn compact ${dialog.variant === "danger" ? "danger" : ""}`}
+                onClick={async () => {
+                  if (dialog.mode === "alert") {
+                    closeDialog();
+                    return;
+                  }
+
+                  if (!dialog.onConfirm) {
+                    closeDialog();
+                    return;
+                  }
+
+                  const currentDialog = dialog;
+                  setIsDialogProcessing(true);
+                  try {
+                    await dialog.onConfirm();
+                  } finally {
+                    setIsDialogProcessing(false);
+                    setDialog((prev) => (prev === currentDialog ? null : prev));
+                  }
+                }}
+                disabled={dialog.mode === "confirm" && isDialogProcessing}
+              >
+                {dialog.mode === "confirm"
+                  ? isDialogProcessing
+                    ? "처리 중..."
+                    : dialog.confirmLabel || "확인"
+                  : dialog.confirmLabel || "확인"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

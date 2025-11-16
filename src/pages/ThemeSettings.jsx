@@ -7,6 +7,7 @@ function ThemeSettings() {
   const navigate = useNavigate();
   const { theme, setTheme } = useThemeStore();
   const [selectedTheme, setSelectedTheme] = useState(theme);
+  const [dialog, setDialog] = useState(null);
   
   useEffect(() => {
     setSelectedTheme(theme);
@@ -81,12 +82,20 @@ function ThemeSettings() {
     },
   ];
 
+  const openDialog = ({ title, message, variant = "info", confirmLabel = "확인", onConfirm }) => {
+    setDialog({ title, message, variant, confirmLabel, onConfirm });
+  };
+
   const handleSave = () => {
     // 테마 설정 저장
     setTheme(selectedTheme);
     console.log("테마 설정 저장:", selectedTheme);
-    alert("테마 설정이 저장되었습니다.");
-    navigate("/mypage");
+    openDialog({
+      title: "테마 설정 저장 완료",
+      message: "테마 설정이 저장되었습니다.",
+      variant: "success",
+      onConfirm: () => navigate("/mypage"),
+    });
   };
 
   return (
@@ -161,6 +170,29 @@ function ThemeSettings() {
           </button>
         </div>
       </div>
+
+      {dialog && (
+        <div className="dialog-overlay" onClick={() => setDialog(null)}>
+          <div className="confirm-dialog" onClick={(e) => e.stopPropagation()}>
+            <h3 className="confirm-dialog-title">{dialog.title}</h3>
+            <p className="confirm-dialog-description">{dialog.message}</p>
+            <div className="confirm-dialog-actions">
+              <button
+                type="button"
+                className={`primary-btn compact ${dialog.variant === "danger" ? "danger" : ""}`}
+                onClick={() => {
+                  if (typeof dialog.onConfirm === "function") {
+                    dialog.onConfirm();
+                  }
+                  setDialog(null);
+                }}
+              >
+                {dialog.confirmLabel || "확인"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

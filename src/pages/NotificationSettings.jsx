@@ -40,11 +40,21 @@ function NotificationSettings() {
     localStorage.setItem(NOTIFICATION_SETTINGS_KEY, JSON.stringify(newSettings));
   };
 
+  const [dialog, setDialog] = useState(null);
+
+  const openDialog = ({ title, message, variant = "info", confirmLabel = "확인", onConfirm }) => {
+    setDialog({ title, message, variant, confirmLabel, onConfirm });
+  };
+
   const handleSave = () => {
     // localStorage에 저장
     localStorage.setItem(NOTIFICATION_SETTINGS_KEY, JSON.stringify(settings));
-    alert("알림 설정이 저장되었습니다.");
-    navigate("/mypage");
+    openDialog({
+      title: "알림 설정 저장 완료",
+      message: "알림 설정이 저장되었습니다.",
+      variant: "success",
+      onConfirm: () => navigate("/mypage"),
+    });
   };
 
   return (
@@ -159,12 +169,35 @@ function NotificationSettings() {
 
           <button
             onClick={handleSave}
-            className="w-full mt-6 px-4 py-2 bg-gradient-to-r from-indigo-600 to-blue-600 text-white text-base rounded-lg hover:from-indigo-700 hover:to-blue-700 transition-all font-medium"
+            className="w-full mt-6 px-4 py-2 bg-[#4f46e5] hover:bg-[#6366f1] text-white text-base rounded-lg transition-all font-medium"
           >
             저장
           </button>
         </div>
       </div>
+
+      {dialog && (
+        <div className="dialog-overlay" onClick={() => setDialog(null)}>
+          <div className="confirm-dialog" onClick={(e) => e.stopPropagation()}>
+            <h3 className="confirm-dialog-title">{dialog.title}</h3>
+            <p className="confirm-dialog-description">{dialog.message}</p>
+            <div className="confirm-dialog-actions">
+              <button
+                type="button"
+                className={`primary-btn compact ${dialog.variant === "danger" ? "danger" : ""}`}
+                onClick={() => {
+                  if (typeof dialog.onConfirm === "function") {
+                    dialog.onConfirm();
+                  }
+                  setDialog(null);
+                }}
+              >
+                {dialog.confirmLabel || "확인"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
