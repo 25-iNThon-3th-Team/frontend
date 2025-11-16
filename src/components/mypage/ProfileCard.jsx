@@ -42,10 +42,7 @@ const ProfileCard = ({ profile, onSave, onInputChange, onLogout, onLogin }) => {
             <h2 className="text-lg font-semibold text-gray-900 mb-1">
               {profile.name}
             </h2>
-            <p className="text-sm text-gray-600 mb-1">{profile.email}</p>
-            <p className="text-xs text-gray-500 mb-1">
-              {profile.studentId} · {profile.major}
-            </p>
+            <p className="text-xs text-gray-500 mb-1">{profile.major}</p>
             <p className="text-xs text-gray-500 mb-3">
               {profile.grade >= 5 ? "5학년 이상" : `${profile.grade}학년`}{" "}
               {profile.semester}학기
@@ -63,12 +60,6 @@ const ProfileCard = ({ profile, onSave, onInputChange, onLogout, onLogin }) => {
               >
                 로그아웃
               </button>
-              <button
-                onClick={onLogin}
-                className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors font-medium"
-              >
-                로그인 테스트
-              </button>
             </div>
           </>
         ) : (
@@ -79,20 +70,6 @@ const ProfileCard = ({ profile, onSave, onInputChange, onLogout, onLogin }) => {
                 value={profile.name}
                 onChange={(e) => onInputChange("name", e.target.value)}
                 placeholder="이름"
-                className="w-full px-3 py-2 mb-2 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400"
-              />
-              <input
-                type="email"
-                value={profile.email}
-                onChange={(e) => onInputChange("email", e.target.value)}
-                placeholder="이메일"
-                className="w-full px-3 py-2 mb-2 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400"
-              />
-              <input
-                type="text"
-                value={profile.studentId}
-                onChange={(e) => onInputChange("studentId", e.target.value)}
-                placeholder="학번"
                 className="w-full px-3 py-2 mb-2 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400"
               />
               <select

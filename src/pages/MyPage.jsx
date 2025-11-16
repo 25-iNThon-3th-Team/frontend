@@ -13,8 +13,8 @@ function MyPage() {
 
   const [profile, setProfile] = useState({
     name: "사용자",
-    email: "user@example.com",
-    studentId: "2020123456",
+    // email: "user@example.com",
+    // studentId: "2020123456",
     major: "컴퓨터학과",
     grade: 3,
     semester: 1,
@@ -37,7 +37,7 @@ function MyPage() {
   const handleSave = async () => {
     try {
       const response = await axios.put("/api/users/me", {
-        name: profile.name || "", // 사용자 이름 (표시 이름)
+        username: profile.name || "", // 사용자 이름 (표시 이름)
         grade: profile.grade || 0,
         semester: profile.semester || 0,
         majorCode: profile.major || "",
@@ -141,8 +141,8 @@ function MyPage() {
         setProfile((prevProfile) => ({
           ...prevProfile,
           name: userData.name || userData.username || prevProfile.name, // name 또는 username 필드에서 사용자 이름 가져오기
-          email: userData.email || prevProfile.email,
-          studentId: userData.studentId || prevProfile.studentId,
+          // email: userData.email || prevProfile.email,
+          // studentId: userData.studentId || prevProfile.studentId,
           major: userData.majorCode || prevProfile.major,
           grade: userData.grade || prevProfile.grade,
           semester: userData.semester || prevProfile.semester,
@@ -187,7 +187,7 @@ function MyPage() {
     <div className="page-container">
       <div className="page-content">
         <h1 className="page-title">마이페이지</h1>
-        <Stats stats={stats} />
+
         <ProfileCard
           profile={profile}
           onSave={handleSave}

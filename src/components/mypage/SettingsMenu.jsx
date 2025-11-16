@@ -51,11 +51,9 @@ const SettingsMenu = () => {
                 d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
               />
             </svg>
-            <span className="text-sm text-gray-900">
-              개인정보 공개 설정
-            </span>
+            <span className="text-sm text-gray-900">개인정보 공개 설정</span>
           </div>
-          <div
+          {/* <div
             className="flex items-center gap-3 py-2.5 px-2 cursor-pointer settings-menu-item rounded-lg transition-colors"
             onClick={() => navigate("/settings/language")}
           >
@@ -73,7 +71,7 @@ const SettingsMenu = () => {
               />
             </svg>
             <span className="text-sm text-gray-900">언어 설정</span>
-          </div>
+          </div> */}
           <div
             className="flex items-center gap-3 py-2.5 px-2 cursor-pointer settings-menu-item rounded-lg transition-colors"
             onClick={() => navigate("/settings/theme")}
