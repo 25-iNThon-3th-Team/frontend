@@ -1,10 +1,26 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../App.css";
+import useAuthStore from "../store/authStore";
+import axios from "../api/axios";
 
 function Withdrawal() {
   const navigate = useNavigate();
   const [confirmText, setConfirmText] = useState("");
+
+  const [user, setUser] = useState({});
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const response = await axios.get("/api/users/me");
+        setUser(response.data);
+      } catch (error) {
+        console.error("사용자 정보 불러오기 실패:", error);
+      }
+    };
+    fetchUser();
+  }, []);
 
   const handleWithdrawal = () => {
     // 최종 확인 절차
@@ -14,12 +30,33 @@ function Withdrawal() {
     }
 
     // 최종 확인
-    if (!window.confirm("정말로 회원탈퇴를 하시겠습니까? 이 작업은 되돌릴 수 없습니다.")) {
+    if (
+      !window.confirm(
+        "정말로 회원탈퇴를 하시겠습니까? 이 작업은 되돌릴 수 없습니다."
+      )
+    )
       return;
-    }
-
-    // 회원탈퇴 기능은 현재 준비 중입니다.
-    alert("회원 탈퇴 기능은 현재 준비 중입니다.");
+    // 탈퇴 API 호출
+    axios.delete(`/api/users/${user.id}`);
+    alert("회원탈퇴가 완료되었습니다. 그동안 이용해주셔서 감사합니다.");
+    // 홈으로 이동
+    // navigate("/");
+    const handleLogout = async () => {
+      {
+        try {
+          await axios.post("/logout");
+          console.log("로그아웃 성공");
+        } catch (error) {
+          console.error("로그아웃 에러:", error);
+        } finally {
+          const { logout } = useAuthStore.getState();
+          logout();
+          sessionStorage.clear();
+          navigate("/");
+        }
+      }
+    };
+    handleLogout();
   };
 
   return (
