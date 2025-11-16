@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import '../App.css'
 import { mockCourses } from '../data/mockData'
-import axiosInstance from '../api/axios'
 import useAuthStore from '../store/authStore'
+import { scheduleApi, classesApi, userApi } from '../api/scheduleApi'
 
 const LOCAL_STORAGE_KEY = 'inthon-saved-schedules'
 
@@ -262,7 +262,6 @@ const loadSavedSchedules = () => {
       }
     })
   } catch (error) {
-    console.error('Failed to load saved schedules', error)
     return []
   }
 }
@@ -780,30 +779,21 @@ function Schedule() {
   useEffect(() => {
     const fetchTimetables = async () => {
       if (!isLoggedIn) {
-        // 로그인하지 않은 경우 로컬 스토리지에서만 로드
         return
       }
 
       setIsLoadingApi(true)
       try {
-        const response = await axiosInstance.get('/api/timetables/me')
-        const apiTimetables = response.data || []
+        const apiTimetables = await scheduleApi.getMyTimetables()
         
         if (Array.isArray(apiTimetables) && apiTimetables.length > 0) {
-          // API 데이터를 기존 구조로 변환
           const convertedSchedules = apiTimetables.map(convertApiTimetableToSchedule)
-          
-          // 변환된 데이터로 savedSchedules 업데이트
           setSavedSchedules(convertedSchedules)
-          setIsApiDataLoaded(true) // API 데이터 로드 완료 플래그 설정
+          setIsApiDataLoaded(true)
           
-          // isActive가 true인 대표 시간표 찾기
           const activeSchedule = convertedSchedules.find(s => s.isActive === true)
           if (activeSchedule && activeSchedule.year) {
-            // 대표 시간표의 year 값을 selectedSemester로 설정
             setSelectedSemester(activeSchedule.year)
-            
-            // 해당 학기의 시간표 목록에서 대표 시간표의 인덱스 찾기
             const filtered = convertedSchedules.filter(schedule => {
               const scheduleYear = schedule.year || ''
               return scheduleYear === activeSchedule.year
@@ -813,20 +803,16 @@ function Schedule() {
               setSavedIndex(activeIndex)
             }
           } else if (convertedSchedules.length > 0) {
-            // 대표 시간표가 없으면 첫 번째 시간표를 선택
             setSavedIndex(0)
           }
         } else {
-          // API에서 데이터가 없으면 로컬 스토리지에서 로드
           const localSchedules = loadSavedSchedules()
           if (localSchedules.length > 0) {
             setSavedSchedules(localSchedules)
           }
-          setIsApiDataLoaded(false) // 로컬 데이터 사용
+          setIsApiDataLoaded(false)
         }
       } catch (error) {
-        console.error('Failed to fetch timetables from API:', error)
-        // API 호출 실패 시 로컬 스토리지에서 로드
         const localSchedules = loadSavedSchedules()
         if (localSchedules.length > 0) {
           setSavedSchedules(localSchedules)
@@ -845,14 +831,12 @@ function Schedule() {
       if (!isLoggedIn) return
 
       try {
-        const response = await axiosInstance.get('/api/users/me')
-        const userData = response.data
+        const userData = await userApi.getMyInfo()
         setUserInfo({
           grade: userData.grade || 0,
           semester: userData.semester || 0
         })
       } catch (error) {
-        console.error('Failed to fetch user info:', error)
         // 기본값 유지
       }
     }
@@ -864,29 +848,21 @@ function Schedule() {
   useEffect(() => {
     const fetchClasses = async () => {
       if (!isLoggedIn) {
-        // 로그인하지 않은 경우 mock 데이터 사용
         return
       }
 
       setIsLoadingCourses(true)
       try {
-        const response = await axiosInstance.get('/api/classes')
-        const apiClasses = response.data || []
+        const apiClasses = await classesApi.getClasses()
         
         if (Array.isArray(apiClasses) && apiClasses.length > 0) {
-          // API 데이터를 기존 구조로 변환
           const convertedCourses = apiClasses.map(convertApiClassToCourse)
           const enrichedCourses = convertedCourses.map((course) => enrichCourse(course))
-          
-          // 변환된 데이터로 availableCourses 업데이트
           setAvailableCourses(enrichedCourses)
         } else {
-          // API에서 데이터가 없으면 mock 데이터 사용
           setAvailableCourses(mockCourses.map((course) => enrichCourse(course)))
         }
       } catch (error) {
-        console.error('Failed to fetch classes from API:', error)
-        // API 호출 실패 시 mock 데이터 사용
         setAvailableCourses(mockCourses.map((course) => enrichCourse(course)))
       } finally {
         setIsLoadingCourses(false)
@@ -1010,26 +986,19 @@ function Schedule() {
     // API 호출 (로그인 상태인 경우)
     if (isLoggedIn) {
       try {
-        // 모든 classId 배열 생성
         const classIds = targetSchedule.courses
           .filter(course => course.classId)
           .map(course => parseInt(course.classId))
         
-        const apiPayload = {
+        await scheduleApi.createTimetable({
           name: uniqueLabel,
           grade: userInfo.grade || 0,
           year: '2025-2',
           isActive: false,
           classIds: classIds,
           semester: userInfo.semester || 0
-        }
-
-        console.log('Saving timetable to API:', apiPayload)
-        await axiosInstance.post('/api/timetables', apiPayload)
-        console.log('Timetable saved successfully')
+        })
       } catch (error) {
-        console.error('Failed to save timetable to API:', error)
-        console.error('Request URL:', error.config?.url)
         // API 실패 시에도 로컬에서 저장 (사용자 경험을 위해)
       }
     }
@@ -1062,26 +1031,19 @@ function Schedule() {
     // API 호출 (로그인 상태인 경우)
     if (isLoggedIn) {
       try {
-        // 모든 classId 배열 생성
         const classIds = schedule.courses
           .filter(course => course.classId)
           .map(course => parseInt(course.classId))
         
-        const apiPayload = {
+        await scheduleApi.createTimetable({
           name: scheduleName,
           grade: userInfo.grade || 0,
           year: '2025-2',
           isActive: false,
           classIds: classIds,
           semester: userInfo.semester || 0
-        }
-
-        console.log('Saving browse timetable to API:', apiPayload)
-        await axiosInstance.post('/api/timetables', apiPayload)
-        console.log('Browse timetable saved successfully')
+        })
       } catch (error) {
-        console.error('Failed to save browse timetable to API:', error)
-        console.error('Request URL:', error.config?.url)
         // API 실패 시에도 로컬에서 저장 (사용자 경험을 위해)
       }
     }
@@ -1105,12 +1067,8 @@ function Schedule() {
     // API 호출 (로그인 상태인 경우)
     if (isLoggedIn) {
       try {
-        console.log('Deleting timetable via API:', { scheduleId })
-        await axiosInstance.delete(`/api/timetables/${scheduleId}`)
-        console.log('Timetable deleted successfully')
+        await scheduleApi.deleteTimetable(scheduleId)
       } catch (error) {
-        console.error('Failed to delete timetable via API:', error)
-        console.error('Request URL:', error.config?.url)
         // API 실패 시에도 로컬에서 삭제 (사용자 경험을 위해)
       }
     }
@@ -1159,13 +1117,9 @@ function Schedule() {
             classIds: classIds
           }
 
-          console.log('Renaming timetable via API:', { scheduleId, apiPayload })
-          await axiosInstance.put(`/api/timetables/${scheduleId}`, apiPayload)
-          console.log('Timetable renamed successfully')
+          await scheduleApi.updateTimetable(scheduleId, apiPayload)
         }
       } catch (error) {
-        console.error('Failed to rename timetable via API:', error)
-        console.error('Request URL:', error.config?.url)
         // API 실패 시에도 로컬에서 이름 변경 (사용자 경험을 위해)
       }
     }
@@ -1220,9 +1174,7 @@ function Schedule() {
           classIds: classIds
         }
 
-        console.log('Setting timetable as active via API:', { scheduleId, apiPayload })
-        await axiosInstance.put(`/api/timetables/${scheduleId}`, apiPayload)
-        console.log('Timetable set as active successfully')
+        await scheduleApi.updateTimetable(scheduleId, apiPayload)
 
         // 이전 대표 시간표가 있으면 isActive: false로 업데이트
         if (previousActiveSchedule) {
@@ -1237,21 +1189,15 @@ function Schedule() {
           else if (prevSemester === 3) prevYearSemester = '2025-여름'
           else if (prevSemester === 4) prevYearSemester = '2025-겨울'
           
-          const prevApiPayload = {
+          await scheduleApi.updateTimetable(previousActiveSchedule.id, {
             name: previousActiveSchedule.name || previousActiveSchedule.label || '',
             grade: previousActiveSchedule.grade || 0,
             year: previousActiveSchedule.year || prevYearSemester,
             isActive: false,
             classIds: prevClassIds
-          }
-
-          console.log('Setting previous active timetable to inactive via API:', { scheduleId: previousActiveSchedule.id, prevApiPayload })
-          await axiosInstance.put(`/api/timetables/${previousActiveSchedule.id}`, prevApiPayload)
-          console.log('Previous active timetable set to inactive successfully')
+          })
         }
       } catch (error) {
-        console.error('Failed to set timetable as active via API:', error)
-        console.error('Request URL:', error.config?.url)
         // API 실패 시에도 로컬에서 업데이트 (사용자 경험을 위해)
       }
     }
@@ -1301,12 +1247,8 @@ function Schedule() {
     // classId가 없으면 API 호출 불가 (로컬 데이터만 삭제)
     if (isLoggedIn && classId) {
       try {
-        console.log('Deleting course:', { scheduleId, classId })
-        await axiosInstance.delete(`/api/timetables/${scheduleId}/classes/${classId}`)
-        console.log('Course deleted successfully')
+        await scheduleApi.deleteClassFromTimetable(scheduleId, classId)
       } catch (error) {
-        console.error('Failed to delete course from API:', error)
-        console.error('Request URL:', error.config?.url)
         // API 실패 시에도 로컬에서 삭제 (사용자 경험을 위해)
       }
     }
@@ -1397,12 +1339,8 @@ function Schedule() {
           classIds: classIds
         }
 
-        console.log('Adding course to API:', { scheduleId, payload })
-        await axiosInstance.put(`/api/timetables/${scheduleId}`, payload)
-        console.log('Course added successfully')
+        await scheduleApi.updateTimetable(scheduleId, payload)
       } catch (error) {
-        console.error('Failed to add course to API:', error)
-        console.error('Request URL:', error.config?.url)
         // API 실패 시에도 로컬에서 추가 (사용자 경험을 위해)
       }
     }
@@ -1529,16 +1467,12 @@ function Schedule() {
           plainTextInput: userText
         }
         
-        console.log('Sending chat message to API:', apiPayload)
-        const response = await axiosInstance.post('/api/timetables/generate', apiPayload)
-        console.log('Timetable generation response:', response.data)
+        const apiTimetables = await scheduleApi.generateTimetables({ plainTextInput: userText })
         
         // API 응답으로 시간표 생성
-        if (response.data && Array.isArray(response.data)) {
-          // API 응답의 timetables 배열을 기존 구조로 변환
-          const convertedSchedules = response.data.map((apiTimetable, index) => {
+        if (apiTimetables && Array.isArray(apiTimetables) && apiTimetables.length > 0) {
+          const convertedSchedules = apiTimetables.map((apiTimetable, index) => {
             const converted = convertApiTimetableToSchedule(apiTimetable)
-            // AI 탭용 추가 정보 설정
             return {
               ...converted,
               label: `추천 ${index + 1}`,
@@ -1550,14 +1484,11 @@ function Schedule() {
           setAiSchedules(convertedSchedules)
           setCurrentIndex(0)
         } else {
-          // API 응답이 없거나 형식이 다르면 기존 로직 사용
           const generated = buildAiSchedules()
           setAiSchedules(generated)
           setCurrentIndex(0)
         }
       } catch (error) {
-        console.error('Failed to generate timetable via API:', error)
-        console.error('Request URL:', error.config?.url)
         // API 실패 시에도 기존 로직 실행 (사용자 경험을 위해)
         const generated = buildAiSchedules()
         setAiSchedules(generated)
@@ -1819,7 +1750,7 @@ function Schedule() {
                                     else if (semesterNum === 3) yearSemester = '2025-여름'
                                     else if (semesterNum === 4) yearSemester = '2025-겨울'
                                     
-                                    axiosInstance.post('/api/timetables', {
+                                    scheduleApi.createTimetable({
                                       name: newScheduleName,
                                       grade: 0,
                                       year: yearSemester,
@@ -1827,13 +1758,13 @@ function Schedule() {
                                       classIds: [],
                                       semester: semesterNum
                                     }).then(response => {
-                                      if (response.data?.id) {
+                                      if (response?.id) {
                                         setSavedSchedules((prev) =>
-                                          prev.map(s => s.id === newScheduleId ? { ...s, id: response.data.id } : s)
+                                          prev.map(s => s.id === newScheduleId ? { ...s, id: response.id } : s)
                                         )
                                       }
-                                    }).catch(error => {
-                                      console.error('Failed to create timetable via API:', error)
+                                    }).catch(() => {
+                                      // API 실패 시에도 로컬에서 생성 (사용자 경험을 위해)
                                     })
                                   } else {
                                     const newSchedule = {
@@ -1949,17 +1880,14 @@ function Schedule() {
                             semester: semesterNum
                           }
 
-                          console.log('Creating new timetable via API:', apiPayload)
-                          const response = await axiosInstance.post('/api/timetables', apiPayload)
-                          console.log('New timetable created successfully:', response.data)
+                          const response = await scheduleApi.createTimetable(apiPayload)
                           
-                          if (response.data?.id) {
+                          if (response?.id) {
                             setSavedSchedules((prev) =>
-                              prev.map(s => s.id === newScheduleId ? { ...s, id: response.data.id } : s)
+                              prev.map(s => s.id === newScheduleId ? { ...s, id: response.id } : s)
                             )
                           }
                         } catch (error) {
-                          console.error('Failed to create timetable via API:', error)
                           // API 실패 시에도 로컬에서 생성 (사용자 경험을 위해)
                         }
                       }
