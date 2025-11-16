@@ -1,9 +1,20 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import '../App.css'
+import axios from '../api/axios.js'
+
+// 사용자 프로필 SVG 이모지
+const UserAvatar = ({ className = "w-8 h-8" }) => {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="8" r="4" fill="currentColor"/>
+      <path d="M6 21C6 17 8.5 14 12 14C15.5 14 18 17 18 21" fill="currentColor"/>
+    </svg>
+  );
+};
 
 function Chat() {
-  const { seniorId } = useParams()
+  const { roomId } = useParams()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const [message, setMessage] = useState('')
@@ -11,61 +22,93 @@ function Chat() {
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
 
-  const professorId = searchParams.get('professor') || 'prof1'
+    const [isLoading, setIsLoading] = useState(false)
+    const [user, setUser] = useState(null)
+    const [opponent, setOpponent] = useState({
 
-  // 선배 및 교수님 데이터 (실제로는 API에서 가져올 것)
-  const seniorData = {
-    1: { name: '김선배', major: '컴퓨터공학과', year: '20학번', profileImage: '👨‍💻', subject: '자료구조', professorName: '김교수' },
-    2: { name: '이선배', major: '컴퓨터공학과', year: '21학번', profileImage: '👩‍💼', subject: '자료구조', professorName: '김교수' },
-    3: { name: '박선배', major: '컴퓨터공학과', year: '19학번', profileImage: '👨‍🎓', subject: '알고리즘', professorName: '박교수' },
-    4: { name: '최선배', major: '컴퓨터공학과', year: '20학번', profileImage: '👩‍🎓', subject: '알고리즘', professorName: '박교수' },
-    5: { name: '정선배', major: '컴퓨터공학과', year: '18학번', profileImage: '👨‍💻', subject: '데이터베이스', professorName: '이교수' },
-    6: { name: '강선배', major: '컴퓨터공학과', year: '21학번', profileImage: '👩‍💼', subject: '데이터베이스', professorName: '이교수' },
-    7: { name: '윤선배', major: '컴퓨터공학과', year: '20학번', profileImage: '👨‍🎓', subject: '웹프로그래밍', professorName: '최교수' }
-  }
+    })
+    const [chat, setChat] = useState([])
+    const [room, setRoom] = useState(null)
 
-  const senior = seniorData[seniorId] || seniorData[1]
+    const [hasNewChat, setHasNewChat] = useState(false)
 
-  // 초기 환영 메시지
+  // 현재 사용자 ID (실제로는 인증 시스템에서 가져올 것)
+  const currentUserId = 'currentUser'
+
+  // 채팅 시작자 정보 (실제로는 API나 로컬 스토리지에서 가져올 것)
+  const initiatedBy = searchParams.get('initiatedBy') || false
+
+
+    const isUserSender = () => {
+        return room && room.sender?.id?.toString() === user?.id
+    }
+
+  // 초기 메시지 설정
   useEffect(() => {
-    const welcomeMessages = [
-      {
-        id: 1,
-        text: `안녕하세요! ${senior.name}입니다. 😊`,
-        sent: false,
-        time: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
-      },
-      {
-        id: 2,
-        text: `${senior.professorName}님의 ${senior.subject} 수업을 수강했었어요. 수업에 대한 궁금한 점이나 후기가 궁금하시면 언제든 물어보세요!`,
-        sent: false,
-        time: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
+      const fetchData = async () => {
+          setIsLoading(true)
+          const rooms = await axios.get(`/api/chat/rooms/${roomId}`);
+          const chatData = await axios.get(`/api/chat/rooms/${roomId}/messages`);
+          setChat(chatData.data);
+          setRoom(rooms.data);
+          const user = await axios.get('/api/users/me');
+          setUser(user.data);
+          const userId = user.data.id
+          const opp = rooms.data.sender.id.toString() === userId ? rooms.data.receiver : rooms.data.sender;
+          setOpponent(opp)
+          setHasNewChat(false)
+          setIsLoading(false)
       }
-    ]
-    setMessages(welcomeMessages)
-  }, [seniorId, senior.name, senior.professorName, senior.subject])
+      fetchData()
+  }, [roomId]);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            setIsLoading(true)
+            if(hasNewChat) {
+                const chatData = await axios.get(`/api/chat/rooms/${roomId}/messages`);
+                setChat(chatData.data);
+                await axios.post(`/api/chat/rooms/${roomId}/read`);
+            }
+            setHasNewChat(false)
+            setIsLoading(false)
+        }
+        fetchData()
+    }, [hasNewChat]);
+
+  // Polling
+    useEffect(() => {
+        let polling = setInterval(() => {
+            const poll = async () => {
+                const ret = await axios.get(`/api/chat/rooms/${roomId}/messages/poll`);
+                const pollData = ret.data;
+                if(pollData.messages.length > 0 || pollData.hasMore) {
+                    setHasNewChat(true);
+                }
+            }
+            poll();
+        }, 500);
+
+        // 페이지에 벗어날 경우 polling X
+        return () => {
+            clearInterval(polling);
+        };
+    }, []);
 
   // 메시지 전송 시 스크롤
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+  }, [chat])
 
-  const handleSend = (e) => {
+  const handleSend = async (e) => {
     e?.preventDefault()
     if (!message.trim()) return
+    const res = await axios.post(`/api/chat/rooms/${roomId}/messages`, {content: message.trim()});
 
-    const newMessage = {
-      id: Date.now(),
-      text: message,
-      sent: true,
-      time: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
-    }
-
-    setMessages(prev => [...prev, newMessage])
+    setChat(prev => [...prev, res.data])
     setMessage('')
+      setHasNewChat(true)
     inputRef.current?.focus()
-
-    // 자동 응답 제거 - 실제 사람이 답변할 것입니다
   }
 
   const handleKeyPress = (e) => {
@@ -81,25 +124,46 @@ function Chat() {
         <button className="chat-back-button" onClick={() => navigate('/chatlist')}>
           ←
         </button>
-        <div className="chat-header-avatar">{senior.profileImage}</div>
+        <div className="chat-header-avatar">
+          <UserAvatar className="w-10 h-10 text-indigo-600 dark:text-indigo-400" />
+        </div>
         <div className="chat-header-info">
-          <h2 className="chat-header-name">{senior.name}</h2>
-          <p className="chat-header-status">{senior.subject} - {senior.professorName} 수강</p>
+          <div className="chat-header-name-wrapper">
+            <h2 className="chat-header-name">{opponent.username}</h2>
+            {/* 상대방이 선배일 때 선배 딱지, 후배일 때 후배 딱지 표시 */}
+            {user && isUserSender() && (
+              <span className="role-badge role-badge-senior">
+                선배
+              </span>
+            )}
+            {user && !isUserSender() && (
+              <span className="role-badge role-badge-junior">
+                후배
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
       <div className="chat-messages">
-        {messages.map((msg) => (
-          <div key={msg.id} className={`chat-message ${msg.sent ? 'sent' : ''}`}>
-            <div className="chat-message-avatar">
-              {msg.sent ? '👤' : senior.profileImage}
-            </div>
-            <div className="chat-message-content">
-              <p className="chat-message-text">{msg.text}</p>
-              <p className="chat-message-time">{msg.time}</p>
-            </div>
+        {chat.length === 0 ? (
+          <div className="chat-empty-state">
+            <p className="chat-empty-text">아직 채팅 내용이 없습니다.</p>
+            <p className="chat-empty-hint">궁금한 점을 물어보세요!</p>
           </div>
-        ))}
+        ) : (
+          chat.map((msg) => (
+            <div key={msg.id} className={`chat-message ${msg?.senderId?.toString() === user?.id ? 'sent' : ''}`}>
+              <div className="chat-message-avatar">
+                <UserAvatar className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
+              </div>
+              <div className="chat-message-content">
+                <p className="chat-message-text">{msg.content}</p>
+                <p className="chat-message-time">{new Date(msg.sentAt).toLocaleTimeString()}</p>
+              </div>
+            </div>
+          ))
+        )}
         <div ref={messagesEndRef} />
       </div>
 
@@ -118,7 +182,6 @@ function Chat() {
           className="chat-send-button"
           disabled={!message.trim()}
         >
-          ➤
         </button>
       </form>
     </div>

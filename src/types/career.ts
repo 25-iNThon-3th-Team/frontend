@@ -1,5 +1,7 @@
 // Course types
-export type CourseType = '전필' | '전선' | '교양';
+import {MajorProps} from "./major.ts";
+
+export type CourseType = 'MAJOR_REQUIRED' | 'MAJOR_ELECTIVE' | '교양';
 
 export interface CompletedCourse {
   courseId: string;
@@ -11,18 +13,14 @@ export interface CompletedCourse {
 }
 
 export interface Course {
-  courseId: string;
+  id: string;
+  courseCode: string;
   name: string;
+  major: MajorProps | undefined | null;
+  creditType: CourseType;
   credits: number;
-  professor: string;
-  schedule: string;
-  prerequisites: string[];
-  difficulty: number; // 1-5
-  workload: number; // 1-5
-  type: CourseType;
-  description?: string;
-  reviews?: CourseReview[];
-  semester?: number; // 1-8
+  competitionRate: number;
+  easinessScore: number;
 }
 
 export interface CourseReview {
@@ -39,6 +37,26 @@ export interface Track {
   requiredCourses: string[]; // courseIds
   optionalCourses: string[]; // courseIds
   fitScore?: number; // 0-100
+  workFocus?: string;
+  aptitudeTraits?: string[];
+}
+
+export interface CrossMajorSchedulePattern {
+  phase: string;
+  details: string[];
+}
+
+export interface CrossMajorOption {
+  id: string;
+  rank: number;
+  emoji: string;
+  title: string;
+  majors: string[];
+  keywords: string[];
+  reason: string;
+  schedulePatterns: CrossMajorSchedulePattern[];
+  comboExamples: string[];
+  trackMatches: string[];
 }
 
 // Roadmap types

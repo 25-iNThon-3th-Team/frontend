@@ -1,0 +1,205 @@
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import "../App.css";
+
+const NOTIFICATION_SETTINGS_KEY = "notificationSettings";
+
+function NotificationSettings() {
+  const navigate = useNavigate();
+  const [settings, setSettings] = useState({
+    pushNotifications: true,
+    emailNotifications: false,
+    messageNotifications: true,
+    seniorMatchNotifications: true,
+    scheduleReminders: true,
+  });
+
+  // 설정 불러오기 (localStorage에서)
+  useEffect(() => {
+    const savedSettings = localStorage.getItem(NOTIFICATION_SETTINGS_KEY);
+    if (savedSettings) {
+      try {
+        const parsed = JSON.parse(savedSettings);
+        setSettings({
+          pushNotifications: parsed.pushNotifications ?? true,
+          emailNotifications: parsed.emailNotifications ?? false,
+          messageNotifications: parsed.messageNotifications ?? true,
+          seniorMatchNotifications: parsed.seniorMatchNotifications ?? true,
+          scheduleReminders: parsed.scheduleReminders ?? true,
+        });
+      } catch (error) {
+        console.error("알림 설정 불러오기 에러:", error);
+      }
+    }
+  }, []);
+
+  const handleToggle = (key) => {
+    const newSettings = { ...settings, [key]: !settings[key] };
+    setSettings(newSettings);
+    // 즉시 localStorage에 저장
+    localStorage.setItem(NOTIFICATION_SETTINGS_KEY, JSON.stringify(newSettings));
+  };
+
+  const [dialog, setDialog] = useState(null);
+
+  const openDialog = ({ title, message, variant = "info", confirmLabel = "확인", onConfirm }) => {
+    setDialog({ title, message, variant, confirmLabel, onConfirm });
+  };
+
+  const handleSave = () => {
+    // localStorage에 저장
+    localStorage.setItem(NOTIFICATION_SETTINGS_KEY, JSON.stringify(settings));
+    openDialog({
+      title: "알림 설정 저장 완료",
+      message: "알림 설정이 저장되었습니다.",
+      variant: "success",
+      onConfirm: () => navigate("/mypage"),
+    });
+  };
+
+  return (
+    <div className="page-container">
+      <div className="page-content">
+        <div className="flex items-center mb-3">
+          <button
+            onClick={() => navigate(-1)}
+            className="p-1 mr-2 rounded-full hover:bg-gray-100"
+          >
+            <svg
+              className="w-5 h-5 text-gray-700"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
+          </button>
+          <h1 className="page-title" style={{ marginBottom: 0, flexGrow: 1 }}>
+            알림 설정
+          </h1>
+        </div>
+
+        <div className="bg-white rounded-lg p-4 mb-3 border border-gray-100">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between py-2">
+              <div>
+                <h3 className="text-sm font-medium text-gray-900">푸시 알림</h3>
+                <p className="text-xs text-gray-500">모바일 푸시 알림 받기</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={settings.pushNotifications}
+                  onChange={() => handleToggle("pushNotifications")}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+              </label>
+            </div>
+
+            <div className="flex items-center justify-between py-2 border-t border-gray-100">
+              <div>
+                <h3 className="text-sm font-medium text-gray-900">이메일 알림</h3>
+                <p className="text-xs text-gray-500">이메일로 알림 받기</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={settings.emailNotifications}
+                  onChange={() => handleToggle("emailNotifications")}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+              </label>
+            </div>
+
+            <div className="flex items-center justify-between py-2 border-t border-gray-100">
+              <div>
+                <h3 className="text-sm font-medium text-gray-900">메시지 알림</h3>
+                <p className="text-xs text-gray-500">새 메시지 알림</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={settings.messageNotifications}
+                  onChange={() => handleToggle("messageNotifications")}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+              </label>
+            </div>
+
+            <div className="flex items-center justify-between py-2 border-t border-gray-100">
+              <div>
+                <h3 className="text-sm font-medium text-gray-900">선배 매칭 알림</h3>
+                <p className="text-xs text-gray-500">새로운 선배 매칭 알림</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={settings.seniorMatchNotifications}
+                  onChange={() => handleToggle("seniorMatchNotifications")}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+              </label>
+            </div>
+
+            <div className="flex items-center justify-between py-2 border-t border-gray-100">
+              <div>
+                <h3 className="text-sm font-medium text-gray-900">시간표 리마인더</h3>
+                <p className="text-xs text-gray-500">수업 시작 전 알림</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={settings.scheduleReminders}
+                  onChange={() => handleToggle("scheduleReminders")}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+              </label>
+            </div>
+          </div>
+
+          <button
+            onClick={handleSave}
+            className="w-full mt-6 px-4 py-2 bg-[#4f46e5] hover:bg-[#6366f1] text-white text-base rounded-lg transition-all font-medium"
+          >
+            저장
+          </button>
+        </div>
+      </div>
+
+      {dialog && (
+        <div className="dialog-overlay" onClick={() => setDialog(null)}>
+          <div className="confirm-dialog" onClick={(e) => e.stopPropagation()}>
+            <h3 className="confirm-dialog-title">{dialog.title}</h3>
+            <p className="confirm-dialog-description">{dialog.message}</p>
+            <div className="confirm-dialog-actions">
+              <button
+                type="button"
+                className={`primary-btn compact ${dialog.variant === "danger" ? "danger" : ""}`}
+                onClick={() => {
+                  if (typeof dialog.onConfirm === "function") {
+                    dialog.onConfirm();
+                  }
+                  setDialog(null);
+                }}
+              >
+                {dialog.confirmLabel || "확인"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default NotificationSettings;

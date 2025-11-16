@@ -5,7 +5,7 @@ import CareerRecommendation from '../components/career/CareerRecommendation';
 import Roadmap from '../components/career/Roadmap';
 import Connections from '../components/career/Connections';
 import { useCareerStore } from '../store/careerStore';
-import { mockCompletedCourses, mockCourses, mockTracks } from '../data/mockData';
+import { mockCompletedCourses, mockCourses, mockTracks, mockCrossMajors } from '../data/mockData';
 import { careerApi } from '../api/careerApi';
 
 function Career() {
@@ -13,6 +13,7 @@ function Career() {
     setCompletedCourses,
     setAllCourses,
     setTracks,
+    setCrossMajors,
     selectedTrack
   } = useCareerStore();
   
@@ -33,6 +34,7 @@ function Career() {
         setCompletedCourses(mockCompletedCourses);
         setAllCourses(mockCourses);
         setTracks(mockTracks);
+        setCrossMajors(mockCrossMajors);
       } catch (error) {
         console.error('Failed to load data:', error);
       } finally {
@@ -41,7 +43,7 @@ function Career() {
     };
 
     loadData();
-  }, [setCompletedCourses, setAllCourses, setTracks]);
+  }, [setCompletedCourses, setAllCourses, setTracks, setCrossMajors]);
 
   if (loading) {
     return (
@@ -65,7 +67,7 @@ function Career() {
         
         {/* Career Recommendation */}
         <CareerRecommendation />
-        
+
         {/* Roadmap */}
         <Roadmap />
         
